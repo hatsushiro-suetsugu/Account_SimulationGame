@@ -30,6 +30,7 @@ class Ledger:
     def _initialize_essential_accounts(self):
         essential_accounts = [
             ("現金", "資産"),
+            ("固定資産","資産")
             ("売上高", "収益"),
             ("売上原価", "費用"),
             ("借入金", "負債"),
@@ -143,13 +144,13 @@ def main():
     # 取引の実行
     try:
         ledger.execute_transaction([
-            ("Cash", 1000),
-            ("Revenue", -1000)
+            ("現金", 1000),
+            ("資本金", -1000)
         ], "Initial deposit")
 
         ledger.execute_transaction([
-            ("Cash", -200),
-            ("Expense", 200)
+            ("現金", -200),
+            ("固定資産", 200)
         ], "Office supplies")
 
     except ValueError as e:
