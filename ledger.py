@@ -9,7 +9,7 @@ class Account:
             raise ValueError(f"無効なカテゴリー: {category}. 有効なカテゴリーは {', '.join(self.VALID_CATEGORIES)} です。")
         self.name = name
         self.category = category  # 資産, 負債, 純資産, 収益, 費用
-        self.balance = 0.0  # 純額
+        self.balance = 0  # 純額
 
     def update(self, amount):
         """金額を更新 (正: 借方, 負: 貸方)"""
