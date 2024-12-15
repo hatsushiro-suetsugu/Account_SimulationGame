@@ -30,7 +30,6 @@ class Ledger:
     def _initialize_essential_accounts(self):
         essential_accounts = [
             ("現金", "資産"),
-            ("固定資産", "資産")
             ("売上高", "収益"),
             ("売上原価", "費用"),
             ("借入金", "負債"),
