@@ -27,10 +27,15 @@ class Ledger:
         self.transactions = []  # 全トランザクション履歴
         self._initialize_essential_accounts()
 
+    # 勘定科目の初期設定
     def _initialize_essential_accounts(self):
         essential_accounts = [
             ("現金", "資産"),
             ("固定資産", "資産"),
+            ("減価償却費","費用"),
+            ("減価償却累計額","負債"),
+            ("固定資産売却益","収益"),
+            ("固定資産売却損","費用"),
             ("売上高", "収益"),
             ("売上原価", "費用"),
             ("借入金", "負債"),
