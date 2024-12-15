@@ -29,11 +29,11 @@ class Ledger:
 
     def _initialize_essential_accounts(self):
         essential_accounts = [
-            ("Cash", "資産"),
-            ("Revenue", "収益"),
-            ("Expense", "費用"),
-            ("Liability", "負債"),
-            ("Capital", "純資産")
+            ("現金", "資産"),
+            ("売上高", "収益"),
+            ("売上原価", "費用"),
+            ("借入金", "負債"),
+            ("資本金", "純資産")
         ]
         for name, category in essential_accounts:
             self.add_account(Account(name, category))
