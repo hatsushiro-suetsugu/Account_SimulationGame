@@ -46,4 +46,4 @@ class Asset:
         else:
             mean = self.value
             std_dev = mean / 6
-            self.market_value = max(0, random.gauss(mean, std_dev))
+            self.market_value = max(0, int(random.gauss(mean, std_dev)))
