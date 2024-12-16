@@ -15,10 +15,10 @@ class AssetManager:
     def display_assets(self):
         """資産を表示"""
         print("保有資産:")
-        for asset in self.assets:
-            asset.update_market_value()
-            status = "処分済み" if asset.disposal_date else "保有中"
-            print(f"  - {asset.name}: 残存価値 {asset.value}, 残存時価 {asset.market_value} ({status})")
+        for each_asset in self.assets:
+            each_asset.update_market_value()
+            status = "処分済み" if each_asset.disposal_date else "保有中"
+            print(f"  - {each_asset.name}: 残存価値 {each_asset.value}, 残存時価 {each_asset.market_value} ({status})")
 
 class TangibleAssetManager(AssetManager):
     def acquire_asset(self, asset_name, value, acquisition_date, owner, useful_life):
@@ -33,9 +33,9 @@ class TangibleAssetManager(AssetManager):
         """固定資産を処分"""
         asset_to_dispose = None
 
-        for asset in self.assets:
-            if isinstance(asset, asset.TangibleAsset) and asset.name == asset_name and asset.disposal_date is None:
-                asset_to_dispose = asset
+        for each_asset in self.assets:
+            if isinstance(each_asset, asset.TangibleAsset) and each_asset.name == asset_name and each_asset.disposal_date is None:
+                asset_to_dispose = each_asset
                 break
 
         if not asset_to_dispose:
@@ -63,24 +63,31 @@ class InventoryManager(AssetManager):
 
     def sell_inventory(self, name, quantity, selling_price):
         """棚卸資産を販売"""
-        for asset in self.assets:
-            if isinstance(asset, asset.InventoryAsset) and asset.name == name:
-                result = asset.sell(quantity, selling_price)
+        for each_asset in self.assets:
+            if isinstance(each_asset, asset.InventoryAsset) and each_asset.name == name:
+                result = each_asset.sell(quantity, selling_price)
                 return result
         raise ValueError(f"エラー: 棚卸資産 {name} が見つかりません。")
 
     def discard_inventory(self, name, quantity):
         """棚卸資産を廃棄"""
-        for asset in self.assets:
-            if isinstance(asset, asset.InventoryAsset) and asset.name == name:
-                result = asset.discard(quantity)
+        for each_asset in self.assets:
+            if isinstance(each_asset, asset.InventoryAsset) and each_asset.name == name:
+                result = each_asset.discard(quantity)
                 return result
         raise ValueError(f"エラー: 棚卸資産 {name} が見つかりません。")
 
     def update_inventory_price(self, name, new_unit_price):
         """棚卸資産の単価を更新"""
-        for asset in self.assets:
-            if isinstance(asset, asset.InventoryAsset) and asset.name == name:
-                asset.update_market_price(new_unit_price)
+        for each_asset in self.assets:
+            if isinstance(each_asset, asset.InventoryAsset) and each_asset.name == name:
+                each_asset.update_market_price(new_unit_price)
                 return
         raise ValueError(f"エラー: 棚卸資産 {name} が見つかりません。")
+def main():
+    print(asset.TangibleAsset)
+    print(asset.InventoryAsset)
+
+if __name__ == "__main__":
+    main()
+    
