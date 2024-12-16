@@ -157,33 +157,33 @@ class Player:
 # テストコード
 def main():
     # プレイヤーを作成
-    player = Player("プレイヤー1", 5000)
+    player1 = Player("プレイヤー1", 5000)
 
     # 初期資本の確認
     print("\n--- 初期財務状況 ---")
-    player.display_financial_summary()
+    player1.display_financial_summary()
 
     # 資産を取得
     print("\n--- 資産の取得 ---")
-    player.acquire_asset("オフィスビル", 3000, "2024-12-15", useful_life=10)
-    player.display_assets()
-    player.display_financial_summary()
+    player1.acquire_asset("オフィスビル", 3000, "2024-12-15", useful_life=10)
+    player1.display_assets()
+    player1.display_financial_summary()
 
     # 減価償却を適用
     print("\n--- 減価償却の適用 ---")
-    player.apply_depreciation()
-    player.display_assets()
-    player.display_financial_summary()
+    player1.apply_depreciation()
+    player1.display_assets()
+    player1.display_financial_summary()
 
     # 資産を処分
     print("\n--- 資産の処分 ---")
-    player.dispose_asset("オフィスビル", "2025-01-01")
-    player.display_assets()
-    player.display_financial_summary()
+    player1.dispose_asset("オフィスビル", "2025-01-01")
+    player1.display_assets()
+    player1.display_financial_summary()
 
     # トランザクション履歴の表示
     print("\n--- トランザクション履歴 ---")
-    player.display_transaction_history()
+    player1.display_transaction_history()
 
 if __name__ == "__main__":
     main()
