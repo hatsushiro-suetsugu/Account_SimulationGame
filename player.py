@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import asset
 import ledger
 import manager
@@ -78,6 +80,47 @@ class Player:
     def display_assets(self):
         """現在の資産を表示"""
         self.tangible_asset_manager.display_assets()
+
+class GameMaster:
+    def __init__(self, start_date="2024-01-01"):
+        """ゲームマスターの初期化"""
+        self.current_date = datetime.strptime(start_date, "%Y-%m-%d")
+        self.event_log = []
+
+    def advance_time(self, days=1, tangible_asset_manager=None):
+        """ゲーム内時間を進める"""
+        self.current_date += timedelta(days=days)
+        print(f"ゲーム内時間が {self.current_date.strftime('%Y-%m-%d')} に進みました。")
+
+        # 減価償却を適用
+        if tangible_asset_manager:
+            total_depreciation = 0
+            for asset in tangible_asset_manager.assets:
+                if isinstance(asset, asset.TangibleAsset) and asset.disposal_date is None:
+                    depreciation = asset.apply_depreciation()
+                    total_depreciation += depreciation
+                    print(f"  - {asset.name} の減価償却適用: {depreciation} (現在の価値: {asset.value})")
+
+            if total_depreciation > 0:
+                # 減価償却をゲームの会計システムに反映
+                print(f"総減価償却額: {total_depreciation}")
+                tangible_asset_manager.display_assets()
+                self.log_event(f"減価償却が適用され、総額 {total_depreciation} が処理されました。")
+
+    def get_current_date(self):
+        """現在のゲーム内日時を取得"""
+        return self.current_date.strftime("%Y-%m-%d")
+
+    def log_event(self, event):
+        """ゲームイベントを記録"""
+        self.event_log.append({"date": self.get_current_date(), "event": event})
+        print(f"[{self.get_current_date()}] イベント記録: {event}")
+
+    def display_event_log(self):
+        """イベントログを表示"""
+        print("\n--- ゲームイベントログ ---")
+        for log in self.event_log:
+            print(f"[{log['date']}] {log['event']}")
 
 # テストコード
 def main():
