@@ -1,13 +1,11 @@
 import random
 
 class Asset:
-    def __init__(self, name, value, owner=None, useful_life=None):
-        """固定資産クラス"""
+    def __init__(self, name, value, owner=None):
+        """基本資産クラス"""
         self.name = name
         self.value = value
-        self.owner = owner  # プレイヤー名
-        self.useful_life = useful_life  # 耐用年数 (年単位)
-        self.accumulated_depreciation = 0  # 減価償却累計額
+        self.owner = owner  # 資産所有者
         self.acquisition_date = None
         self.disposal_date = None
         self.disposal_value = None
@@ -22,6 +20,17 @@ class Asset:
         """資産の処分を記録"""
         self.disposal_value = disposal_value
         self.disposal_date = disposal_date
+
+    def update_market_value(self):
+        """残存時価を更新（デフォルト実装）"""
+        self.market_value = self.value  # デフォルトでは簿価
+
+class TangibleAsset(Asset):
+    def __init__(self, name, value, owner=None, useful_life=None):
+        """固定資産クラス"""
+        super().__init__(name, value, owner)
+        self.useful_life = useful_life  # 耐用年数 (年単位)
+        self.accumulated_depreciation = 0  # 減価償却累計額
 
     def calculate_depreciation(self):
         """1年分の減価償却を計算"""
