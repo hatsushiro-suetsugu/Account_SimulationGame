@@ -119,7 +119,7 @@ def main():
     player1.acquire_tangible_asset("オフィスビル", 3000, "2024-12-15", useful_life=10)
     player1.display_assets()
 
-    # 減価償却を適用
+    # 減価償却を適用(ゲームマスターによる実行)
     print("\n--- 減価償却の適用 ---")
     total_depreciation = 0
     for asset in player1.tangible_asset_manager.assets:
