@@ -1,68 +1,14 @@
 import asset
 import ledger
-
-
-import ledger
-from asset import TangibleAsset, Asset
-
-class AssetManager:
-    def __init__(self):
-        self.assets = []
-
-    def acquire_asset(self, asset_name, value, acquisition_date, owner):
-        """汎用資産の取得"""
-        print(f"{owner}が{asset_name}を{value}で取得します。")
-        asset_instance = Asset(asset_name, value, owner)
-        asset_instance.acquire(owner, acquisition_date)
-        self.assets.append(asset_instance)
-        return asset_instance
-
-    def display_assets(self):
-        """資産を表示"""
-        print("保有資産:")
-        for asset in self.assets:
-            asset.update_market_value()
-            status = "処分済み" if asset.disposal_date else "保有中"
-            print(f"  - {asset.name}: 残存価値 {asset.value}, 残存時価 {asset.market_value} ({status})")
-
-class TangibleAssetManager(AssetManager):
-    def acquire_asset(self, asset_name, value, acquisition_date, owner, useful_life):
-        """固定資産の取得"""
-        print(f"{owner}が固定資産 {asset_name} を {value} で取得します。")
-        asset_instance = TangibleAsset(asset_name, value, owner, useful_life)
-        asset_instance.acquire(owner, acquisition_date)
-        self.assets.append(asset_instance)
-        return asset_instance
-
-    def dispose_asset(self, asset_name, disposal_date):
-        """固定資産を処分"""
-        asset_to_dispose = None
-
-        for asset in self.assets:
-            if isinstance(asset, TangibleAsset) and asset.name == asset_name and asset.disposal_date is None:
-                asset_to_dispose = asset
-                break
-
-        if not asset_to_dispose:
-            raise ValueError(f"エラー: 固定資産 {asset_name} が見つからないか、既に処分済みです。")
-
-        asset_to_dispose.update_market_value()
-        disposal_value = asset_to_dispose.market_value
-        profit_or_loss = disposal_value - asset_to_dispose.value
-        asset_to_dispose.dispose(disposal_value, disposal_date)
-
-        return {
-            "disposal_value": disposal_value,
-            "profit_or_loss": profit_or_loss,
-            "asset": asset_to_dispose,
-        }
+import manager
 
 class Player:
     def __init__(self, name, initial_cash=1000):
         """プレイヤークラスの初期化"""
         self.name = name
         self.ledger_manager = ledger.Ledger()
-        self.tangible_asset_manager = TangibleAssetManager()
+        self.tangible_asset_manager = manager.TangibleAssetManager()
+        self.ineentory_manager = manager.InventoryManager()
         self.cash_account = "現金"
 
         # 初期現金を設定
@@ -71,6 +17,7 @@ class Player:
             ("資本金", -initial_cash)
         ], description="Initial capital")
 
+    """固定資産に関する活動"""   
     def acquire_tangible_asset(self, asset_name, value, acquisition_date, useful_life):
         """固定資産を取得"""
         asset = self.tangible_asset_manager.acquire_asset(
@@ -100,7 +47,34 @@ class Player:
                 (self.cash_account, disposal_value),
                 ("固定資産売却損", -profit_or_loss)
             ], description=f"Loss on disposal of {asset_name}")
+            
+    """棚卸資産に関する活動"""
+    def acquire_inventory(self, name, unit_price, quantity):
+        """棚卸資産を取得"""
+        inventory = self.inventory_manager.acquire_inventory(name, unit_price, quantity, self.name)
+        self.ledger_manager.execute_transaction([
+            (self.cash_account, -(unit_price * quantity)),
+            ("棚卸資産", unit_price * quantity)
+        ], description=f"Acquired inventory {name}")
 
+    def sell_inventory(self, name, quantity, selling_price):
+        """棚卸資産を販売"""
+        result = self.inventory_manager.sell_inventory(name, quantity, selling_price)
+        self.ledger_manager.execute_transaction([
+            ("棚卸資産", -(quantity * self.inventory_manager.assets[0].unit_price)),
+            ("売上高", result["revenue"]),
+            ("利益", result["profit"])
+        ], description=f"Sold inventory {name}")
+
+    def discard_inventory(self, name, quantity):
+        """棚卸資産を廃棄"""
+        result = self.inventory_manager.discard_inventory(name, quantity)
+        self.ledger_manager.execute_transaction([
+            ("棚卸資産", -result["loss"]),
+            ("廃棄損", result["loss"])
+        ], description=f"Discarded inventory {name}")
+        
+        
     def display_assets(self):
         """現在の資産を表示"""
         self.tangible_asset_manager.display_assets()
@@ -123,13 +97,13 @@ def main():
     print("\n--- 減価償却の適用 ---")
     total_depreciation = 0
     for asset in player1.tangible_asset_manager.assets:
-        if isinstance(asset, TangibleAsset) and asset.disposal_date is None:
+        if isinstance(asset, asset.TangibleAsset) and asset.disposal_date is None:
             depreciation = asset.apply_depreciation()
             total_depreciation += depreciation
 
     player1.ledger_manager.execute_transaction([
         ("減価償却費", total_depreciation),
-        ("固定資産", -total_depreciation)
+        ("減価償却累計額", -total_depreciation)
     ], description="Depreciation applied")
 
     player1.display_assets()

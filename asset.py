@@ -56,3 +56,35 @@ class TangibleAsset(Asset):
             mean = self.value
             std_dev = mean / 6
             self.market_value = max(0, int(random.gauss(mean, std_dev)))
+
+class InventoryAsset(Asset):
+    def __init__(self, name, unit_price, quantity=0):
+        """棚卸資産クラスの初期化"""
+        super().__init__(name, unit_price * quantity)
+        self.unit_price = unit_price  # 単価
+        self.quantity = quantity  # 数量
+        self.total_value = self.unit_price * self.quantity  # 合計価値
+
+    def add_stock(self, quantity, unit_price):
+        """在庫を追加"""
+        self.unit_price = ((self.unit_price * self.quantity) + (unit_price * quantity)) / (self.quantity + quantity)
+        self.quantity += quantity
+        self.total_value = self.unit_price * self.quantity
+        self.value = self.total_value
+
+    def remove_stock(self, quantity):
+        """在庫を削除"""
+        if quantity > self.quantity:
+            raise ValueError("在庫数量を超える削除はできません。")
+        self.quantity -= quantity
+        self.total_value = self.unit_price * self.quantity
+        self.value = self.total_value
+
+    def get_inventory_status(self):
+        """現在の在庫状態を取得"""
+        return {
+            "name": self.name,
+            "unit_price": self.unit_price,
+            "quantity": self.quantity,
+            "total_value": self.total_value,
+        }
