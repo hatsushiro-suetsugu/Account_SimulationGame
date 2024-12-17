@@ -79,21 +79,41 @@ class Ledger:
         }
         self._transactions.append(transaction)
 
-    def get_balance_summary(self) -> dict:
-        """財務状況を取得"""
+    def _get_balance_summary(self) -> dict:
+        """財務状況を取得し、純損益を計算して利益剰余金に反映(決算整理)"""
         summary = {}
+        total_revenue = 0
+        total_expense = 0
+
+        # 勘定残高を集計し、収益と費用を分けて計算
         for account in self._accounts.values():
             summary[account.name] = account.net_balance()
-
+            if account.category == "収益":
+                total_revenue += account.net_balance()
+            elif account.category == "費用":
+                total_expense += account.net_balance()
+                
         # 残高合計の制約確認
         total_balance = sum(summary.values())
         if total_balance != 0:
             print("警告: 財務諸表の残高合計が0ではありません。")
+
+        # 純損益を計算
+        net_income = total_revenue + total_expense  # 費用は正値なので足す
+
+        # 利益剰余金に純損益を反映
+        if net_income != 0:
+            self._update_account("利益剰余金", -net_income)
+            summary["利益剰余金"] += -net_income  # 利益剰余金の反映
+
+        # 純損益を含めたデータを返す
+        summary["純損益"] = -net_income
         return summary
+
 
     def display_balance(self):
         """財務状況を表示(残高試算表の作成)"""
-        summary = self.get_balance_summary()
+        summary = self._get_balance_summary()
         for name, balance in summary.items():
             if balance > 0:
                 print(f"{name} (Debit): {balance}")
@@ -104,8 +124,8 @@ class Ledger:
 
     def display_financial_statements(self):
         """貸借対照表と損益計算書を表示"""
-        summary = self.get_balance_summary()
-    
+        summary = self._get_balance_summary()
+
         balance_sheet = {"資産": {}, "負債": {}, "純資産": {}}
         income_statement = {"収益": {}, "費用": {}}
 
@@ -124,32 +144,21 @@ class Ledger:
             for name, balance in accounts.items():
                 if balance > 0:
                     print(f"    {name}  : {balance}")
-                elif balance == 0:
-                    pass
-                else:
+                elif balance < 0:
                     print(f"    {name}  : ({-balance})")
 
         # 損益計算書の表示
         print("\n損益計算書:")
-        total_revenue = sum(income_statement["収益"].values())
-        total_expense = sum(income_statement["費用"].values())
-        net_income = total_revenue + total_expense
-
         print("  収益:")
         for name, balance in income_statement["収益"].items():
-            if balance == 0:
-                pass
-            else:
-                print(f"    {name}: ({-balance})")
-
+            print(f"    {name}: ({-balance})")
         print("  費用:")
         for name, balance in income_statement["費用"].items():
-            if balance == 0:
-                pass
-            else:
-                print(f"    {name}: {balance}")
-                    
-        print(f"\n  純損益: ({-net_income})")
+            print(f"    {name}: {balance}")
+
+        # 純損益の表示
+        print(f"\n  純損益: ({-summary['純損益']})")
+
 
     def _get_transaction_history(self):
         """トランザクション履歴を取得"""
