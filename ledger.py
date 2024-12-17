@@ -2,7 +2,7 @@ from datetime import datetime
 import json
 
 class Account:
-    VALID_CATEGORIES = {"資産", "負債", "純資産", "収益", "費用"}
+    VALID_CATEGORIES = ["資産", "負債", "純資産", "収益", "費用"]
 
     def __init__(self, name, category, sub_category=None):
         """会計勘定クラス"""
@@ -97,62 +97,95 @@ class Ledger:
 
         # 利益剰余金に純損益を反映
         if net_income != 0:
-            self._update_account("利益剰余金", -net_income)
-            summary["利益剰余金"] += -net_income  # 利益剰余金の反映
-
+            self._update_account("利益剰余金", net_income)
+            
         # 純損益を含めたデータを返す
         summary["純損益"] = -net_income
         return summary
 
-
+    def display_credit_and_debit(self, name, balance):
+        if balance > 0:
+                print(f"{name}: {balance}")
+        elif balance < 0:
+            print(f"{name}: ({-balance})")
+        else:
+            print(f"{name}: 0")
+    
     def display_balance(self):
         """財務状況を表示(残高試算表の作成)"""
+        print("\n\n残高試算表:\n")
         summary = self._get_balance_summary()
         for name, balance in summary.items():
             if balance > 0:
-                print(f"{name} (Debit): {balance}")
+                print(f"{name}: {balance}")
             elif balance < 0:
-                print(f"{name} (Credit): {-balance}")
+                print(f"{name}: ({-balance})")
             else:
                 print(f"{name}: 0")
-
+            
     def display_financial_statements(self):
         """貸借対照表と損益計算書を表示"""
         summary = self._get_balance_summary()
 
-        balance_sheet = {"資産": {}, "負債": {}, "純資産": {}}
-        income_statement = {"収益": {}, "費用": {}}
+        # 表示用の辞書を初期化
+        balance_sheet = {
+            "資産": {"流動資産": {}, "固定資産": {}, "繰延資産": {}},
+            "負債": {"流動負債": {}, "固定負債": {}},
+            "純資産": {"資本金等": {}, "剰余金": {}}
+        }
+        income_statement = {
+            "収益": {"営業収益": {}, "営業外収益": {}},
+            "費用": {"営業費用": {}, "営業外費用": {}}
+        }
 
-        # summaryを各カテゴリーごとに振り分け
+        # summaryを各カテゴリーとサブカテゴリーに分類
         for account in self._accounts.values():
-            balance = summary[account.name]
-            if account.category in balance_sheet:
-                balance_sheet[account.category][account.name] = balance
-            elif account.category in income_statement:
-                income_statement[account.category][account.name] = balance
+            balance = summary.get(account.name, 0)
+            if account.category == "資産":
+                balance_sheet["資産"][account.sub_category][account.name] = balance
+            elif account.category == "負債":
+                balance_sheet["負債"][account.sub_category][account.name] = balance
+            elif account.category == "純資産":
+                balance_sheet["純資産"][account.sub_category][account.name] = balance
+            elif account.category == "収益":
+                income_statement["収益"][account.sub_category][account.name] = balance
+            elif account.category == "費用":
+                income_statement["費用"][account.sub_category][account.name] = balance
 
         # 貸借対照表の表示
-        print("\n貸借対照表:")
-        for category, accounts in balance_sheet.items():
-            print(f"  {category}:")
-            for name, balance in accounts.items():
-                if balance > 0:
-                    print(f"    {name}  : {balance}")
-                elif balance < 0:
-                    print(f"    {name}  : ({-balance})")
+        print("\n=== 貸借対照表 ===")
+        for category, subcategories in balance_sheet.items():
+            print(f"{category}:")
+            for sub_category, accounts in subcategories.items():
+                if not isinstance(accounts, dict):
+                    continue  # accountsが辞書でない場合スキップ
+                print(f"    {sub_category}:")
+                for name, balance in accounts.items():
+                    if balance > 0:
+                        print(f"        {name}: {balance}")
+                    elif balance < 0:
+                        print(f"        {name}: ({-balance})")
+                    else:
+                        pass
 
         # 損益計算書の表示
-        print("\n損益計算書:")
-        print("  収益:")
-        for name, balance in income_statement["収益"].items():
-            print(f"    {name}: ({-balance})")
-        print("  費用:")
-        for name, balance in income_statement["費用"].items():
-            print(f"    {name}: {balance}")
+        print("\n=== 損益計算書 ===")
+        for category, subcategories in income_statement.items():
+            print(f"{category}:")
+            for sub_category, accounts in subcategories.items():
+                if not isinstance(accounts, dict):
+                    continue  # accountsが辞書でない場合スキップ
+                print(f"    {sub_category}:")
+                for name, balance in accounts.items():
+                    if balance > 0:
+                        print(f"        {name}: {balance}")
+                    elif balance < 0:
+                        print(f"        {name}: ({-balance})")
+                    else:
+                        pass
 
         # 純損益の表示
-        print(f"\n  純損益: ({-summary['純損益']})")
-
+        print(f"\n純損益: {summary['純損益']:,}")
 
     def _get_transaction_history(self):
         """トランザクション履歴を取得"""
@@ -164,17 +197,17 @@ class Ledger:
             }
             for tx in self._transactions
         ]
-
+        
     def display_transaction_history(self):
-        """全トランザクション履歴(総勘定元帳)を表示"""
-        print("\nTransaction History:")
-        for tx in self._get_transaction_history():
-            timestamp = tx["timestamp"]
-            updates_str = ", ".join([f"{name}: {amount}" for name, amount in tx["updates"]])
-            description = tx["description"] if tx["description"] else "No description"
-            print(f"  [{timestamp}]")
-            print(f"    仕訳: {updates_str}")
-            print(f"    摘要: {description}")
+            """全トランザクション履歴(総勘定元帳)を表示"""
+            print("\n\n取引一覧:\n")
+            for tx in self._get_transaction_history():
+                timestamp = tx["timestamp"]
+                updates_str = ", ".join([f"{name}: {amount}" for name, amount in tx["updates"]])
+                description = tx["description"] if tx["description"] else "No description"
+                print(f"  [{timestamp}]")
+                print(f"    仕訳: {updates_str}")
+                print(f"    摘要: {description}")
 
 def main():
     # サンプルコード
@@ -221,6 +254,9 @@ def main():
 
     # 仕訳の表示
     ledger.display_transaction_history()
+    
+    # 残高試算表の表示
+    ledger.display_balance()
     
     # 財務諸表を表示
     ledger.display_financial_statements()
