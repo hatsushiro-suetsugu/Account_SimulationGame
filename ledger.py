@@ -26,10 +26,10 @@ class Ledger:
         """勘定元帳クラス"""
         self._accounts = {}
         self._transactions = []  # 全トランザクション履歴
-        self._initialize_essential_accounts()
+        self._initialize_essential_accounts(file_path="essential_account.json")
 
     # 勘定科目の初期設定:essential_account.jsonで管理(12/17)
-    def _initialize_essential_accounts(self, file_path = "essential_account.json"):
+    def _initialize_essential_accounts(self, file_path):
         with open(file_path, "r", encoding="UTF-8") as file:
             data = json.load(file)
             accounts = data["essential_accounts"]
@@ -246,6 +246,13 @@ def main():
             ("減価償却費", 10),
             ("減価償却累計額", -10)
         ], description="減価償却の実行")
+        
+        ledger.execute_transaction({
+            ("現金", 210),
+            ("建物", -200),
+            ("減価償却累計額", 10),
+            ("固定資産売却益", -20)
+        }, description="建物の売却")
         
 
     except ValueError as e:
