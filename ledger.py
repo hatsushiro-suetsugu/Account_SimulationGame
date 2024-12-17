@@ -55,7 +55,7 @@ class Ledger:
         # 勘定の残高を更新
         self.accounts[name].update(amount)
 
-    def execute_transaction(self, updates, description=""):
+    def execute_transaction(self, updates, timestamp = "ゲーム内時間", description=""):
         """取引を実行し、制約を確認"""
         if not isinstance(updates, list) or len(updates) < 2:
             raise ValueError("取引には2つ以上の更新が必要です。")
@@ -72,11 +72,11 @@ class Ledger:
         transaction = {
             "updates": updates,
             "description": description,
-            "timestamp": "仮のゲーム内時間"  # ゲーム上の時間を仮定
+            "timestamp": timestamp  # ゲーム上の時間を仮定
         }
         self.transactions.append(transaction)
 
-    def get_balance_summary(self):
+    def get_balance_summary(self) -> dict:
         """財務状況を取得"""
         summary = {}
         for account in self.accounts.values():
