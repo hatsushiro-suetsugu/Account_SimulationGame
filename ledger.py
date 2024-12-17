@@ -151,16 +151,30 @@ def main():
         ledger.execute_transaction([
             ("現金", 1000),
             ("資本金", -1000)
-        ], "Initial deposit")
+        ], "会社の設立")
 
         ledger.execute_transaction([
             ("現金", -200),
             ("固定資産", 200)
-        ], "Office supplies")
+        ], "固定資産の取得")
+        
+        ledger.execute_transaction([
+            ("現金", -500),
+            ("売上高", 500)
+        ], "売上の発生")
+
+        
+        ledger.execute_transaction([
+            ("減価償却費", 10),
+            ("減価償却累計額", -10)
+        ], "減価償却の実行")
 
     except ValueError as e:
         print(f"エラー: {e}")
 
+    # 仕訳の表示
+    ledger.display_transaction_history()
+    
     # 財務諸表を表示
     ledger.display_financial_statements()
 

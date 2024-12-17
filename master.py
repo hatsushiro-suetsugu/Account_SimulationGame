@@ -1,13 +1,43 @@
 from datetime import datetime, timedelta
+import uuid
 
 from asset import  TangibleAsset, InventoryAsset
 from player import Player
 
 class GameMaster:
+    ASSET_TYPES = {
+        "tangible": {"class": TangibleAsset, "description": "固定資産"},
+        "inventory": {"class": InventoryAsset, "description": "棚卸資産"}
+    }
+        
     def __init__(self, start_date="2024-01-01"):
         """ゲームマスターの初期化"""
         self.current_date = datetime.strptime(start_date, "%Y-%m-%d")
         self.event_log = []
+        self.asset_registry = {}  # 全資産の管理
+        
+    def construct_instance(self, asset_type, name, value, useful_life=None):
+        """資産を生成しデータベースに登録"""
+        asset_id = str(uuid.uuid4())
+
+        if asset_type == "tangible":
+            asset_instance = TangibleAsset(name, value, useful_life)
+        else:
+            raise ValueError(f"無効な資産タイプ: {asset_type}")
+
+        self.asset_registry[asset_id] = asset_instance
+        print(f"資産 '{name}' (ID: {asset_id}) が登録されました。")
+        return asset_id, asset_instance
+
+    def get_asset_by_id(self, asset_id):
+        """資産IDを基に資産情報を取得"""
+        return self.asset_registry.get(asset_id, None)
+
+    def display_assets(self):
+        """全資産を表示"""
+        print("\n=== 登録済み資産 ===")
+        for asset_id, asset in self.asset_registry.items():
+            print(f"ID: {asset_id}, 名前: {asset.name}, 市場価格: {asset.market_value}")
 
     def advance_time(self, days=None, months=3, players=None):
         """
