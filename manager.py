@@ -1,6 +1,25 @@
-class AssetManager:
-    def __init__(self, game_master):
+class Manager:
+    def __init__(self, game_master, player):
         self.game_master = game_master
+        self.player = player
+
+
+class SalesManager(Manager):
+    def __init__(self, game_master, player):
+        """営業部門"""
+        super().__init__(game_master, player)
+
+class PurchaseManager(Manager):
+    def __init__(self, game_master, player):
+        """購買部門"""
+        super().__init__(game_master, player)
+
+
+
+class AssetManager(Manager):
+    def __init__(self, game_master, player):
+        """資産管理部門"""
+        super().__init__(game_master, player)
 
     def get_asset(self, asset_id):
         """GameMasterから資産を取得"""
@@ -18,5 +37,6 @@ class AssetManager:
             ("固定資産", cost)
         ], description=f"Acquired {asset.name}")
         print(f"資産 '{asset.name}' を取得しました（価格: {cost}）。")
+
 
     
