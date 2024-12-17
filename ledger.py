@@ -173,9 +173,6 @@ class Ledger:
             print(f"    仕訳: {updates_str}")
             print(f"    摘要: {description}")
 
-
-
-
 def main():
     # サンプルコード
     ledger = Ledger()
