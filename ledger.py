@@ -123,13 +123,13 @@ class Ledger:
             self._update_account("利益剰余金", net_income)
         summary["純損益"] = -net_income
         
-        # 帳簿の閉鎖 -> 初期化
+        # 帳簿の閉鎖 -> PLの初期化
         for account in self._accounts.values():
             if account.statement == "損益計算書":
-                self._clear_account(account.name)  # 収益と費用はリセット
+                self._clear_account(account.name)  
             else:
-                continue  # 資産・負債・純資産は繰越
-        self._clear_transactions()
+                continue  
+        # self._clear_transactions()
             
         return summary
     
@@ -145,9 +145,9 @@ class Ledger:
             else:
                 print(f"{name}: 0")
             
-    def _get_financial_statements(self) -> dict:
+    def _get_financial_statements(self, summary:dict) -> dict:
         """貸借対照表と損益計算書を作成"""
-        summary = self.execute_settlement()
+        # summary = self.execute_settlement()
         # 表示用の辞書を初期化
         statements = {
             "貸借対照表": {
@@ -176,11 +176,10 @@ class Ledger:
                 
         return statements
 
-    def display_financial_statements(self):
+    def display_financial_statements(self, summary:dict):
         """貸借対照表と損益計算書を表示　12/17:print()による表示"""
-        summary = self.execute_settlement()
-        statements = self._get_financial_statements()
-        # summary = self.execute_settlement() # 純損益の取扱いが難しい．．．
+        # summary = self.execute_settlement()
+        statements = self._get_financial_statements(summary)
          
         # 貸借対照表の表示
         print("\n=== 貸借対照表 ===")
@@ -277,8 +276,8 @@ def main():
         print(f"エラー(第1期): {e}")
     
     # 第1期の終了
-    print("第1期が終了しました！")
-    ledger.execute_settlement() 
+    print("----第1期が終了しました！----")
+    end_1 = ledger.execute_settlement() 
     
     # 仕訳の表示
     ledger.display_transaction_history()
@@ -287,9 +286,25 @@ def main():
     ledger.display_balance()
         
     # 財務諸表を表示
-    ledger.display_financial_statements()
+    ledger.display_financial_statements(end_1)
     
-    try:     
+    try:    
+        ledger.execute_transaction([
+            ("仕入", 600),
+            ("現金", -600)
+        ], description = "商品の仕入")
+        
+        ledger.execute_transaction([
+            ("現金", 750),
+            ("売上高", -750)
+        ], description = "売上の発生")
+
+        ledger.execute_transaction([
+            ("売上原価", 600),
+            ("仕入", -600),
+            ("棚卸資産", 0)
+        ], description="商品の棚卸し")
+         
         ledger.execute_transaction([
             ("現金", 210),
             ("建物", -200),
@@ -301,7 +316,7 @@ def main():
         print(f"エラー(第2期): {e}")
     
     # 第2期が終了
-    print("第2期が終了しました！")
+    print("----第2期が終了しました！----")
     end_2 = ledger.execute_settlement()
     
     # 仕訳の表示
@@ -311,7 +326,7 @@ def main():
     ledger.display_balance()
         
     # 財務諸表を表示
-    ledger.display_financial_statements()
+    ledger.display_financial_statements(end_2)
 
 if __name__ == "__main__":
     main()
