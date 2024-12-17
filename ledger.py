@@ -35,8 +35,8 @@ class Ledger:
         self._former_transactions = [] # 前期以前の全トランザクション履歴
         self._initialize_essential_accounts(file_path="essential_account.json")
 
-    # 勘定科目の初期設定:essential_account.jsonで管理(12/17)
     def _initialize_essential_accounts(self, file_path):
+        """勘定科目の初期設定:essential_account.jsonで管理(12/17)"""
         with open(file_path, "r", encoding="UTF-8") as file:
             data = json.load(file)
             accounts = data["essential_accounts"]

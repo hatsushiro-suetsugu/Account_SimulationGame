@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 import uuid
 
-from asset import  TangibleAsset, InventoryAsset
+import asset
 from player import Player
 
 class GameMaster:
     ASSET_TYPES = {
-        "tangible": {"class": TangibleAsset, "description": "固定資産"},
-        "inventory": {"class": InventoryAsset, "description": "棚卸資産"}
+        "tangible": {"class": asset.TangibleAsset, "description": "固定資産"},
+        "building": {"class": asset.Building, "description": "建物"},
+        "inventory": {"class": asset.InventoryAsset, "description": "棚卸資産"}
     }
         
     def __init__(self, start_date="2024-01-01"):
@@ -16,12 +17,12 @@ class GameMaster:
         self.event_log = []
         self.asset_registry = {}  # 全資産の管理
         
-    def construct_instance(self, asset_type, name, value, useful_life=None):
+    def construct_instance(self, asset_type, name, *args, **kwargs):
         """資産を生成しデータベースに登録"""
         asset_id = str(uuid.uuid4())
 
         if asset_type == "tangible":
-            asset_instance = TangibleAsset(name, value, useful_life)
+            asset_instance = asset.TangibleAsset(name, *args, **kwargs)
         else:
             raise ValueError(f"無効な資産タイプ: {asset_type}")
 
