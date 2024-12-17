@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 class Account:
     VALID_CATEGORIES = {"資産", "負債", "純資産", "収益", "費用"}
@@ -20,7 +21,6 @@ class Account:
         """純額を返す"""
         return self.balance
 
-
 class Ledger:
     def __init__(self) -> dict:
         """勘定元帳クラス"""
@@ -28,24 +28,17 @@ class Ledger:
         self._transactions = []  # 全トランザクション履歴
         self._initialize_essential_accounts()
 
-    # 勘定科目の初期設定
-    def _initialize_essential_accounts(self):
-        essential_accounts = [
-            ("現金", "資産"),
-            ("固定資産", "資産"),
-            ("減価償却費","費用"),
-            ("減価償却累計額","資産"),
-            ("固定資産売却益","収益"),
-            ("固定資産売却損","費用"),
-            ("売上高", "収益"),
-            ("仕入","費用"),
-            ("棚卸資産","資産"),
-            ("売上原価", "費用"),
-            ("借入金", "負債"),
-            ("利益剰余金", "純資産"),
-            ("資本金", "純資産")
-        ]
-        for name, category, sub_category in essential_accounts:
+    # 勘定科目の初期設定:essential_account.jsonで管理(12/17)
+    def _initialize_essential_accounts(self, file_path = "essential_account.json"):
+        with open(file_path, "r", encoding="UTF-8") as file:
+            data = json.load(file)
+            accounts = data["essential_accounts"]
+
+        for account in accounts:
+            name = account["name"]
+            category = account["category"]
+            sub_category = account["sub_category"]
+            
             self.add_account(Account(name, category, sub_category))
 
     def add_account(self, account):
@@ -198,7 +191,7 @@ def main():
 
         ledger.execute_transaction([
             ("現金", -200),
-            ("固定資産", 200)
+            ("建物", 200)
         ], description = "固定資産の取得")
         
         ledger.execute_transaction([
