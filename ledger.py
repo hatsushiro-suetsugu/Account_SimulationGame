@@ -128,38 +128,39 @@ class Ledger:
         summary = self._get_balance_summary()
 
         # 表示用の辞書を初期化
-        balance_sheet = {
-            "資産": {"流動資産": {}, "固定資産": {}, "繰延資産": {}},
-            "負債": {"流動負債": {}, "固定負債": {}},
-            "純資産": {"資本金等": {}, "剰余金": {}}
-        }
-        income_statement = {
-            "収益": {"営業収益": {}, "営業外収益": {}},
-            "費用": {"営業費用": {}, "営業外費用": {}}
+        statements = {
+            "貸借対照表": {
+                "資産": {"流動資産": {}, "固定資産": {}, "繰延資産": {}},
+                "負債": {"流動負債": {}, "固定負債": {}},
+                "純資産": {"株主資本": {}, "評価・換算差額": {}}
+            },
+            "損益計算書": {
+                "収益": {"営業収益": {}, "営業外収益": {}},
+                "費用": {"営業費用": {}, "営業外費用": {}}
+            }
         }
 
-        # summaryを各カテゴリーとサブカテゴリーに分類
+        # 勘定科目をループして各カテゴリー・サブカテゴリーに振り分け
         for account in self._accounts.values():
             balance = summary.get(account.name, 0)
-            if account.category == "資産":
-                balance_sheet["資産"][account.sub_category][account.name] = balance
-            elif account.category == "負債":
-                balance_sheet["負債"][account.sub_category][account.name] = balance
-            elif account.category == "純資産":
-                balance_sheet["純資産"][account.sub_category][account.name] = balance
-            elif account.category == "収益":
-                income_statement["収益"][account.sub_category][account.name] = balance
-            elif account.category == "費用":
-                income_statement["費用"][account.sub_category][account.name] = balance
+            category = account.category
+
+            # 貸借対照表 (BS) の処理
+            if category in ["資産", "負債", "純資産"]:
+                statement = statements["貸借対照表"]
+                statement[category][account.sub_category][account.name] = balance
+
+            # 損益計算書 (PL) の処理
+            elif category in ["収益", "費用"]:
+                statement = statements["損益計算書"]
+                statement[category][account.sub_category][account.name] = balance
 
         # 貸借対照表の表示
         print("\n=== 貸借対照表 ===")
-        for category, subcategories in balance_sheet.items():
+        for category, subcategories in statements["貸借対照表"].items():
             print(f"{category}:")
             for sub_category, accounts in subcategories.items():
-                if not isinstance(accounts, dict):
-                    continue  # accountsが辞書でない場合スキップ
-                print(f"    {sub_category}:")
+                print(f"  {sub_category}:")
                 for name, balance in accounts.items():
                     if balance > 0:
                         print(f"        {name}: {balance}")
@@ -170,12 +171,10 @@ class Ledger:
 
         # 損益計算書の表示
         print("\n=== 損益計算書 ===")
-        for category, subcategories in income_statement.items():
+        for category, subcategories in statements["損益計算書"].items():
             print(f"{category}:")
             for sub_category, accounts in subcategories.items():
-                if not isinstance(accounts, dict):
-                    continue  # accountsが辞書でない場合スキップ
-                print(f"    {sub_category}:")
+                print(f"  {sub_category}:")
                 for name, balance in accounts.items():
                     if balance > 0:
                         print(f"        {name}: {balance}")
@@ -183,9 +182,9 @@ class Ledger:
                         print(f"        {name}: ({-balance})")
                     else:
                         pass
-
         # 純損益の表示
         print(f"\n純損益: {summary['純損益']:,}")
+
 
     def _get_transaction_history(self):
         """トランザクション履歴を取得"""

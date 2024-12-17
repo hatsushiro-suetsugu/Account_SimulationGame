@@ -63,12 +63,12 @@
         {
             "name": "利益剰余金",
             "category": "純資産",
-            "sub_category": "剰余金"
+            "sub_category": "株主資本"
         },
         {
             "name": "資本金",
             "category": "純資産",
-            "sub_category": "資本金等"
+            "sub_category": "株主資本"
         }
     ]
 }
