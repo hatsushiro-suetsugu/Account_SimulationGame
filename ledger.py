@@ -163,7 +163,7 @@ class Ledger:
         ]
 
     def display_transaction_history(self):
-        """全トランザクション履歴を表示"""
+        """全トランザクション履歴(総勘定元帳)を表示"""
         print("\nTransaction History:")
         for tx in self._get_transaction_history():
             timestamp = tx["timestamp"]
