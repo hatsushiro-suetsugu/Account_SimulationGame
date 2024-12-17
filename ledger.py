@@ -3,12 +3,13 @@ from datetime import datetime
 class Account:
     VALID_CATEGORIES = {"資産", "負債", "純資産", "収益", "費用"}
 
-    def __init__(self, name, category):
+    def __init__(self, name, category, sub_category=None):
         """会計勘定クラス"""
         if category not in self.VALID_CATEGORIES:
             raise ValueError(f"無効なカテゴリー: {category}. 有効なカテゴリーは {', '.join(self.VALID_CATEGORIES)} です。")
         self.name = name
         self.category = category  # 資産, 負債, 純資産, 収益, 費用
+        self.sub_category = sub_category # (BS)流動/固定、(PL)営業/非営業
         self.balance = 0  # 純額
 
     def update(self, amount):
@@ -44,8 +45,8 @@ class Ledger:
             ("利益剰余金", "純資産"),
             ("資本金", "純資産")
         ]
-        for name, category in essential_accounts:
-            self.add_account(Account(name, category))
+        for name, category, sub_category in essential_accounts:
+            self.add_account(Account(name, category, sub_category))
 
     def add_account(self, account):
         """新しい勘定を追加"""
