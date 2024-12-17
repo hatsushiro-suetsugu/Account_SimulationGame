@@ -1,0 +1,74 @@
+{
+    "essential_accounts": [
+        {
+            "name": "現金",
+            "category": "資産",
+            "sub_category": "流動資産"
+        },
+        {
+            "name": "建物",
+            "category": "資産",
+            "sub_category": "固定資産"
+        },
+        {
+            "name": "減価償却費",
+            "category": "費用",
+            "sub_category": "営業費用"
+        },
+        {
+            "name": "減価償却累計額",
+            "category": "資産",
+            "sub_category": "固定資産"
+        },
+        {
+            "name": "固定資産売却益",
+            "category": "収益",
+            "sub_category": "営業外収益"
+        },
+        {
+            "name": "固定資産売却損",
+            "category": "費用",
+            "sub_category": "営業外費用"
+        },
+        {
+            "name": "売上高",
+            "category": "収益",
+            "sub_category": "営業収益"
+        },
+        {
+            "name": "仕入",
+            "category": "費用",
+            "sub_category": "営業費用"
+        },
+        {
+            "name": "棚卸資産",
+            "category": "資産",
+            "sub_category": "流動資産"
+        },
+        {
+            "name": "売上原価",
+            "category": "費用",
+            "sub_category": "営業費用"
+        },
+        {
+            "name": "借入金",
+            "category": "負債",
+            "sub_category": "固定負債"
+        },
+        {
+            "name": "借入金",
+            "category": "負債",
+            "sub_category": "流動負債"
+        }
+        {
+            "name": "利益剰余金",
+            "category": "純資産",
+            "sub_category": "剰余金"
+        },
+        {
+            "name": "資本金",
+            "category": "純資産",
+            "sub_category": "資本金等"
+        }
+    ]
+}
