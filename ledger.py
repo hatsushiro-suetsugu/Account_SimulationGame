@@ -4,13 +4,14 @@ import json
 class Account:
     VALID_CATEGORIES = ["資産", "負債", "純資産", "収益", "費用"]
 
-    def __init__(self, name, category, sub_category=None):
+    def __init__(self, name, statement=None, category=None, sub_category=None):
         """会計勘定クラス"""
         if category not in self.VALID_CATEGORIES:
             raise ValueError(f"無効なカテゴリー: {category}. 有効なカテゴリーは {', '.join(self.VALID_CATEGORIES)} です。")
         self.name = name
+        self.statement = statement # 貸借対照表, 損益計算書, 株主資本等変動計算書(予定), キャッシュフロー計算書(予定)
         self.category = category  # 資産, 負債, 純資産, 収益, 費用
-        self.sub_category = sub_category # (BS)流動/固定、(PL)営業/非営業
+        self.sub_category = sub_category # (BS)流動/固定、(PL)営業/営業外
         self.balance = 0  # 純額
 
     def update(self, amount):
@@ -20,12 +21,18 @@ class Account:
     def net_balance(self):
         """純額を返す"""
         return self.balance
+    
+    def clear(self):
+        """金額をリセット"""
+        self.balance = 0
 
 class Ledger:
     def __init__(self) -> dict:
         """勘定元帳クラス"""
         self._accounts = {}
-        self._transactions = []  # 全トランザクション履歴
+        self._transactions = []  # 当期トランザクション履歴(期中)
+        self._last_transactions = [] # 当期トランザクション履歴(期末)
+        self._former_transactions = [] # 前期以前の全トランザクション履歴
         self._initialize_essential_accounts(file_path="essential_account.json")
 
     # 勘定科目の初期設定:essential_account.jsonで管理(12/17)
@@ -36,10 +43,11 @@ class Ledger:
 
         for account in accounts:
             name = account["name"]
+            statement = account["statement"]
             category = account["category"]
             sub_category = account["sub_category"]
             
-            self.add_account(Account(name, category, sub_category))
+            self.add_account(Account(name, statement, category, sub_category))
 
     def add_account(self, account):
         """新しい勘定を追加"""
@@ -51,11 +59,22 @@ class Ledger:
             raise ValueError(f"勘定名： {name} が存在しません。")
         # 勘定の残高を更新
         self._accounts[name].update(amount)
+        
+    def _clear_account(self, name):
+        self._accounts[name].clear()
+    
+    def _clear_transactions(self):
+        self._transactions = []
+
+    def reset_ledger(self):
+        """全勘定科目の残高を0にリセット"""
+        for account in self._accounts.values():
+            self._update_account(account.name, 0)
 
     def execute_transaction(self, updates, timestamp = "ゲーム内時間", description=""):
         """取引を実行し、制約を確認"""
         if not isinstance(updates, list) or len(updates) < 2:
-            raise ValueError("取引には2つ以上の更新が必要です。")
+            raise ValueError(f"取引には2つ以上の更新が必要です。{updates}")
 
         total_amount = sum(update[1] for update in updates)
         if total_amount != 0:
@@ -73,12 +92,18 @@ class Ledger:
         }
         self._transactions.append(transaction)
 
-    def _get_balance_summary(self) -> dict:
-        """財務状況を取得し、純損益を計算して利益剰余金に反映(決算整理)"""
+    def execute_settlement(self) -> dict:
+        """
+        (決算整理)
+        剰余金の計算
+        減価償却の実行(予定)
+        その他決算整理事項の実行(予定)
+        帳簿の閉鎖：Ledgerの初期化
+        """
         summary = {}
         total_revenue = 0
         total_expense = 0
-
+        
         # 勘定残高を集計し、収益と費用を分けて計算
         for account in self._accounts.values():
             summary[account.name] = account.net_balance()
@@ -94,27 +119,24 @@ class Ledger:
 
         # 純損益を計算
         net_income = total_revenue + total_expense  # 費用は正値なので足す
-
-        # 利益剰余金に純損益を反映
         if net_income != 0:
             self._update_account("利益剰余金", net_income)
-            
-        # 純損益を含めたデータを返す
         summary["純損益"] = -net_income
+        
+        # 帳簿の閉鎖 -> 初期化
+        for account in self._accounts.values():
+            if account.statement == "損益計算書":
+                self._clear_account(account.name)  # 収益と費用はリセット
+            else:
+                continue  # 資産・負債・純資産は繰越
+        self._clear_transactions()
+            
         return summary
-
-    def display_credit_and_debit(self, name, balance):
-        if balance > 0:
-                print(f"{name}: {balance}")
-        elif balance < 0:
-            print(f"{name}: ({-balance})")
-        else:
-            print(f"{name}: 0")
     
     def display_balance(self):
         """財務状況を表示(残高試算表の作成)"""
+        summary = self.execute_settlement()
         print("\n\n残高試算表:\n")
-        summary = self._get_balance_summary()
         for name, balance in summary.items():
             if balance > 0:
                 print(f"{name}: {balance}")
@@ -123,10 +145,9 @@ class Ledger:
             else:
                 print(f"{name}: 0")
             
-    def display_financial_statements(self):
-        """貸借対照表と損益計算書を表示"""
-        summary = self._get_balance_summary()
-
+    def _get_financial_statements(self) -> dict:
+        """貸借対照表と損益計算書を作成"""
+        summary = self.execute_settlement()
         # 表示用の辞書を初期化
         statements = {
             "貸借対照表": {
@@ -145,16 +166,22 @@ class Ledger:
             balance = summary.get(account.name, 0)
             category = account.category
 
-            # 貸借対照表 (BS) の処理
             if category in ["資産", "負債", "純資産"]:
                 statement = statements["貸借対照表"]
                 statement[category][account.sub_category][account.name] = balance
 
-            # 損益計算書 (PL) の処理
             elif category in ["収益", "費用"]:
                 statement = statements["損益計算書"]
                 statement[category][account.sub_category][account.name] = balance
+                
+        return statements
 
+    def display_financial_statements(self):
+        """貸借対照表と損益計算書を表示　12/17:print()による表示"""
+        summary = self.execute_settlement()
+        statements = self._get_financial_statements()
+        # summary = self.execute_settlement() # 純損益の取扱いが難しい．．．
+         
         # 貸借対照表の表示
         print("\n=== 貸借対照表 ===")
         for category, subcategories in statements["貸借対照表"].items():
@@ -184,7 +211,6 @@ class Ledger:
                         pass
         # 純損益の表示
         print(f"\n純損益: {summary['純損益']:,}")
-
 
     def _get_transaction_history(self):
         """トランザクション履歴を取得"""
@@ -248,8 +274,12 @@ def main():
         ], description="減価償却の実行")
         
     except ValueError as e:
-        print(f"エラー: {e}")
-        
+        print(f"エラー(第1期): {e}")
+    
+    # 第1期の終了
+    print("第1期が終了しました！")
+    ledger.execute_settlement() 
+    
     # 仕訳の表示
     ledger.display_transaction_history()
     
@@ -260,16 +290,26 @@ def main():
     ledger.display_financial_statements()
     
     try:     
-        ledger.execute_transaction({
+        ledger.execute_transaction([
             ("現金", 210),
             ("建物", -200),
             ("減価償却累計額", 10),
             ("固定資産売却益", -20)
-        }, description="建物の売却")
+        ], description="建物の売却")
         
     except ValueError as e:
-        print(f"エラー: {e}")
+        print(f"エラー(第2期): {e}")
     
+    # 第2期が終了
+    print("第2期が終了しました！")
+    end_2 = ledger.execute_settlement()
+    
+    # 仕訳の表示
+    ledger.display_transaction_history()
+    
+    # 残高試算表の表示
+    ledger.display_balance()
+        
     # 財務諸表を表示
     ledger.display_financial_statements()
 
