@@ -23,8 +23,8 @@ class Account:
 class Ledger:
     def __init__(self) -> dict:
         """勘定元帳クラス"""
-        self.accounts = {}
-        self.transactions = []  # 全トランザクション履歴
+        self._accounts = {}
+        self._transactions = []  # 全トランザクション履歴
         self._initialize_essential_accounts()
 
     # 勘定科目の初期設定
@@ -33,12 +33,15 @@ class Ledger:
             ("現金", "資産"),
             ("固定資産", "資産"),
             ("減価償却費","費用"),
-            ("減価償却累計額","負債"),
+            ("減価償却累計額","資産"),
             ("固定資産売却益","収益"),
             ("固定資産売却損","費用"),
             ("売上高", "収益"),
+            ("仕入","費用"),
+            ("棚卸資産","資産"),
             ("売上原価", "費用"),
             ("借入金", "負債"),
+            ("利益剰余金", "純資産"),
             ("資本金", "純資産")
         ]
         for name, category in essential_accounts:
@@ -46,14 +49,14 @@ class Ledger:
 
     def add_account(self, account):
         """新しい勘定を追加"""
-        self.accounts[account.name] = account
+        self._accounts[account.name] = account
 
     def _update_account(self, name, amount):
         """(内部使用) 指定された勘定を更新"""
-        if name not in self.accounts:
+        if name not in self._accounts:
             raise ValueError(f"勘定名： {name} が存在しません。")
         # 勘定の残高を更新
-        self.accounts[name].update(amount)
+        self._accounts[name].update(amount)
 
     def execute_transaction(self, updates, timestamp = "ゲーム内時間", description=""):
         """取引を実行し、制約を確認"""
@@ -74,12 +77,12 @@ class Ledger:
             "description": description,
             "timestamp": timestamp  # ゲーム上の時間を仮定
         }
-        self.transactions.append(transaction)
+        self._transactions.append(transaction)
 
     def get_balance_summary(self) -> dict:
         """財務状況を取得"""
         summary = {}
-        for account in self.accounts.values():
+        for account in self._accounts.values():
             summary[account.name] = account.net_balance()
 
         # 残高合計の制約確認
@@ -89,7 +92,7 @@ class Ledger:
         return summary
 
     def display_balance(self):
-        """財務状況を表示"""
+        """財務状況を表示(残高試算表の作成)"""
         summary = self.get_balance_summary()
         for name, balance in summary.items():
             if balance > 0:
@@ -101,43 +104,76 @@ class Ledger:
 
     def display_financial_statements(self):
         """貸借対照表と損益計算書を表示"""
+        summary = self.get_balance_summary()
+    
         balance_sheet = {"資産": {}, "負債": {}, "純資産": {}}
         income_statement = {"収益": {}, "費用": {}}
 
-        for account in self.accounts.values():
+        # summaryを各カテゴリーごとに振り分け
+        for account in self._accounts.values():
+            balance = summary[account.name]
             if account.category in balance_sheet:
-                balance_sheet[account.category][account.name] = account.net_balance()
+                balance_sheet[account.category][account.name] = balance
             elif account.category in income_statement:
-                income_statement[account.category][account.name] = account.net_balance()
+                income_statement[account.category][account.name] = balance
 
+        # 貸借対照表の表示
         print("\n貸借対照表:")
         for category, accounts in balance_sheet.items():
             print(f"  {category}:")
             for name, balance in accounts.items():
-                print(f"    {name}: {balance}")
+                if balance > 0:
+                    print(f"    {name}  : {balance}")
+                elif balance == 0:
+                    pass
+                else:
+                    print(f"    {name}  : ({-balance})")
 
+        # 損益計算書の表示
         print("\n損益計算書:")
         total_revenue = sum(income_statement["収益"].values())
         total_expense = sum(income_statement["費用"].values())
-        net_income = total_revenue - total_expense
+        net_income = total_revenue + total_expense
 
         print("  収益:")
         for name, balance in income_statement["収益"].items():
-            print(f"    {name}: {balance}")
+            if balance == 0:
+                pass
+            else:
+                print(f"    {name}: ({-balance})")
 
         print("  費用:")
         for name, balance in income_statement["費用"].items():
-            print(f"    {name}: {balance}")
+            if balance == 0:
+                pass
+            else:
+                print(f"    {name}: {balance}")
+                    
+        print(f"\n  純損益: ({-net_income})")
 
-        print(f"\n  純損益: {net_income}")
+    def _get_transaction_history(self):
+        """トランザクション履歴を取得"""
+        return [
+            {
+                "timestamp": tx["timestamp"],
+                "updates": tx["updates"],
+                "description": tx["description"]
+            }
+            for tx in self._transactions
+        ]
 
     def display_transaction_history(self):
         """全トランザクション履歴を表示"""
         print("\nTransaction History:")
-        for tx in self.transactions:
+        for tx in self._get_transaction_history():
             timestamp = tx["timestamp"]
             updates_str = ", ".join([f"{name}: {amount}" for name, amount in tx["updates"]])
-            print(f"  [{timestamp}] Updates: {updates_str}, Description: {tx['description']}")
+            description = tx["description"] if tx["description"] else "No description"
+            print(f"  [{timestamp}]")
+            print(f"    仕訳: {updates_str}")
+            print(f"    摘要: {description}")
+
+
 
 
 def main():
@@ -151,23 +187,34 @@ def main():
         ledger.execute_transaction([
             ("現金", 1000),
             ("資本金", -1000)
-        ], "会社の設立")
+        ], description = "会社の設立")
 
         ledger.execute_transaction([
             ("現金", -200),
             ("固定資産", 200)
-        ], "固定資産の取得")
+        ], description = "固定資産の取得")
         
         ledger.execute_transaction([
-            ("現金", -500),
-            ("売上高", 500)
-        ], "売上の発生")
+            ("仕入", 450),
+            ("現金", -450)
+        ], description = "商品の仕入")
+        
+        ledger.execute_transaction([
+            ("現金", 500),
+            ("売上高", -500)
+        ], description = "売上の発生")
 
+        ledger.execute_transaction([
+            ("売上原価", 400),
+            ("仕入", -450),
+            ("棚卸資産", 50)
+        ], description="商品の棚卸し")
         
         ledger.execute_transaction([
             ("減価償却費", 10),
             ("減価償却累計額", -10)
-        ], "減価償却の実行")
+        ], description="減価償却の実行")
+        
 
     except ValueError as e:
         print(f"エラー: {e}")
