@@ -247,6 +247,19 @@ def main():
             ("減価償却累計額", -10)
         ], description="減価償却の実行")
         
+    except ValueError as e:
+        print(f"エラー: {e}")
+        
+    # 仕訳の表示
+    ledger.display_transaction_history()
+    
+    # 残高試算表の表示
+    ledger.display_balance()
+        
+    # 財務諸表を表示
+    ledger.display_financial_statements()
+    
+    try:     
         ledger.execute_transaction({
             ("現金", 210),
             ("建物", -200),
@@ -254,15 +267,8 @@ def main():
             ("固定資産売却益", -20)
         }, description="建物の売却")
         
-
     except ValueError as e:
         print(f"エラー: {e}")
-
-    # 仕訳の表示
-    ledger.display_transaction_history()
-    
-    # 残高試算表の表示
-    ledger.display_balance()
     
     # 財務諸表を表示
     ledger.display_financial_statements()
