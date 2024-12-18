@@ -106,7 +106,7 @@ class Player:
         # 各マネージャーオブジェクトの設定
         
         # Playerの保持するアセット情報
-        self.assets = []
+        self.assets = [] # {"name": name,"asset": product}
         self.debts = []
 
         # 初期現金の設定
@@ -115,10 +115,12 @@ class Player:
             ("資本金", -initial_cash)
         ], description="Initial capital")
 
+    """プレイメソッド(Managerを介さず直接行う場合)"""
+
     def aquire_building(self, name: chr, value: int):
-        """建物の取得(直接行う場合)"""
+        """建物の(登録＆)取得"""
         if value <= 0 :
-            raise("取得価額は0より大きくなければなりません")
+            raise ValueError("取得価額は0より大きくなければなりません")
         else:
             target = asset.Building(name, value, self)
             self.assets.append(target)
@@ -127,22 +129,62 @@ class Player:
                 ("現金", -target.value)
             ], description=f"建物の取得　建物名：{name}")
     
-    def purchase_product(self, name, quantity: int, price: int, fringe_cost = 0):
+    def redister_product(self, product:asset.Inventory, name):
+        """商品の登録"""
+        if product not in self.game_master.asset_registry:
+            raise ("この商品は存在しません")
+        product
+        self.assets.append({"name": name, "asset": product})
+            
+    def purchase_product(self, product: asset.Inventory, 
+                         quantity: int, price: int, fringe_cost = 0):
+        """商品の購入"""
         if price <= 0 :
-            raise("取得価額は0より大きくなければなりません")
-        else:
-            product = asset.Inventory(name, price)
-            self.assets.append(product)
-            value = quantity * price + fringe_cost
-            self.ledger_manager.execute_transaction([
-                ("仕入", value),
-                ("現金", -value)
-            ], description=f"商品の仕入れ　商品名：{name} 個数：{quantity} 単価：{price}")
-            
-    def sale_product(self, name, )
-            
+            raise ValueError("取得価額は0より大きくなければなりません")
+    
+        product.add_inventory(quantity, price, fringe_cost)
+        value = quantity * price + fringe_cost
+        self.ledger_manager.execute_transaction([
+            ("仕入", value),
+            ("現金", -value)
+        ], description=f"商品の仕入れ　商品名：{product.name} 個数：{quantity} 単価：{price}")
         
+    def sale_product(self, product: asset.Inventory, 
+                     quantity: int, sale_price: int, revert = 0):
+        """商品の販売"""
+        if sale_price <= 0 :
+            print("警告：売価が0になっています") 
             
+        product.subtract_inventory(quantity)   
+        sale_value = quantity * sale_price - revert 
+        self.ledger_manager.execute_transaction([
+            ("現金", sale_value),
+            ("売上高", -sale_value)
+        ])
+    
+    def take_inventory(self, product: asset.Inventory, loss = 0):
+        """商品の棚卸し""" 
+        old_price = product.price
+        old_quantity = product.quantity
+        new_price = product.market_price
+        new_quantity = old_quantity - loss
+        if old_price < new_price:
+            new_value = new_price * new_quantity
+        else:
+            new_value = old_price * new_quantity
+        # 棚卸減耗の記録
+        inventory_shortage = old_price * loss    
+        product.quantity -= loss
+        
+        # 商品評価損の記録
+        appraisal_loss = (old_price - new_price) * new_quantity
+        
+        self.ledger_manager.execute_transaction([
+            ("売上原価", 400),
+            ("仕入", -450),
+            ("棚卸資産", 50)
+        ])
+        
 def main():
     # サンプルコード
     game_master = GameMaster()
