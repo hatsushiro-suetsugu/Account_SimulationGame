@@ -1,0 +1,88 @@
+{
+    "essential_accounts": [
+        {
+            "name": "現金",
+            "statement": "貸借対照表",
+            "category": "資産",
+            "sub_category": "流動資産"
+        },
+        {
+            "name": "建物",
+            "statement": "貸借対照表",
+            "category": "資産",
+            "sub_category": "固定資産"
+        },
+        {
+            "name": "減価償却費",
+            "statement": "損益計算書",
+            "category": "費用",
+            "sub_category": "営業費用"
+        },
+        {
+            "name": "減価償却累計額",
+            "statement": "貸借対照表",
+            "category": "資産",
+            "sub_category": "固定資産"
+        },
+        {
+            "name": "固定資産売却益",
+            "statement": "損益計算書",
+            "category": "収益",
+            "sub_category": "営業外収益"
+        },
+        {
+            "name": "固定資産売却損",
+            "statement": "損益計算書",
+            "category": "費用",
+            "sub_category": "営業外費用"
+        },
+        {
+            "name": "売上高",
+            "statement": "損益計算書",
+            "category": "収益",
+            "sub_category": "営業収益"
+        },
+        {
+            "name": "仕入",
+            "statement": "損益計算書",
+            "category": "費用",
+            "sub_category": "営業費用"
+        },
+        {
+            "name": "棚卸資産",
+            "statement": "貸借対照表",
+            "category": "資産",
+            "sub_category": "流動資産"
+        },
+        {
+            "name": "売上原価",
+            "statement": "損益計算書",
+            "category": "費用",
+            "sub_category": "営業費用"
+        },
+        {
+            "name": "借入金",
+            "statement": "貸借対照表",
+            "category": "負債",
+            "sub_category": "固定負債"
+        },
+        {
+            "name": "借入金",
+            "statement": "貸借対照表",
+            "category": "負債",
+            "sub_category": "流動負債"
+        },
+        {
+            "name": "利益剰余金",
+            "statement": "貸借対照表",
+            "category": "純資産",
+            "sub_category": "株主資本"
+        },
+        {
+            "name": "資本金",
+            "statement": "貸借対照表",
+            "category": "純資産",
+            "sub_category": "株主資本"
+        }
+    ]
+}

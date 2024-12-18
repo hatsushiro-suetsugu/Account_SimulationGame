@@ -1,5 +1,5 @@
 import unittest
-from manager import AssetManager
+from manager import AssetManager, TangibleAssetManager, InventoryManager
 from ledger import Ledger, Account
 from player import Player
 from master import GameMaster
@@ -36,7 +36,7 @@ class TestLedger(unittest.TestCase):
             ("現金", 1000),
             ("資本金", -1000)
         ], "Initial capital")
-        balance = self.ledger.execute_settlement()
+        balance = self.ledger._get_balance_summary()
         self.assertEqual(balance["現金"], 1000)
 
     def test_balance_sheet(self):
@@ -44,7 +44,7 @@ class TestLedger(unittest.TestCase):
             ("現金", 1000),
             ("資本金", -1000)
         ])
-        summary = self.ledger.execute_settlement()
+        summary = self.ledger._get_balance_summary()
         self.assertIn("現金", summary)
         self.assertEqual(summary["現金"], 1000)
 
@@ -54,14 +54,14 @@ class TestPlayer(unittest.TestCase):
 
     def test_acquire_tangible_asset(self):
         self.player.acquire_tangible_asset("Machine", 2000, "2024-01-01", useful_life=5)
-        balance = self.player.ledger_manager.execute_settlement()
+        balance = self.player.ledger_manager._get_balance_summary()
         self.assertEqual(balance["現金"], 3000)
         self.assertEqual(balance["固定資産"], 2000)
 
     def test_sell_inventory(self):
         self.player.acquire_inventory("Widget", 20, 10)
         self.player.sell_inventory("Widget", 5, 30)
-        balance = self.player.ledger_manager.execute_settlement()
+        balance = self.player.ledger_manager._get_balance_summary()
         self.assertIn("売上高", balance)
 
 class TestGameMaster(unittest.TestCase):
