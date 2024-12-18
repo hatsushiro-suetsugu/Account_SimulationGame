@@ -92,7 +92,7 @@ class Ledger:
         }
         self._transactions.append(transaction)
 
-    def execute_settlement(self) -> dict:
+    def execute_settlement(self, tangible_assets:list) -> dict:
         """
         (決算整理)
         剰余金の計算
@@ -100,22 +100,9 @@ class Ledger:
         その他決算整理事項の実行(予定)
         帳簿の閉鎖：Ledgerの初期化
         """
-        summary = {}
-        total_revenue = 0
-        total_expense = 0
+        self._execute_depreciation(tangible_assets)
         
-        # 勘定残高を集計し、収益と費用を分けて計算
-        for account in self._accounts.values():
-            summary[account.name] = account.net_balance()
-            if account.category == "収益":
-                total_revenue += account.net_balance()
-            elif account.category == "費用":
-                total_expense += account.net_balance()
-                
-        # 残高合計の制約確認
-        total_balance = sum(summary.values())
-        if total_balance != 0:
-            print("警告: 財務諸表の残高合計が0ではありません。")
+        summary, total_revenue, total_expense = self._get_trial_balance()
 
         # 純損益を計算
         net_income = total_revenue + total_expense  # 費用は正値なので足す
@@ -133,7 +120,37 @@ class Ledger:
             
         return summary
     
-    def display_balance(self):
+    def _execute_depreciation(self, tangible_assets:list):
+        """(決算整理)減価償却の実行"""
+        for asset in tangible_assets:
+            depreciation = asset.apply_depreciation()
+            self.execute_transaction([
+                ("減価償却費", depreciation),
+                ("減価償却累計額", depreciation)
+            ], description= f"{asset.name}の減価償却の実行")
+    
+    def _get_trial_balance(self) -> dict:
+        """残高試算表の作成"""
+        summary = {}
+        total_revenue = 0
+        total_expense = 0
+        
+        # 勘定残高を集計し、収益と費用を分けて計算
+        for account in self._accounts.values():
+            summary[account.name] = account.net_balance()
+            if account.category == "収益":
+                total_revenue += account.net_balance()
+            elif account.category == "費用":
+                total_expense += account.net_balance()
+                
+        # 残高合計の制約確認
+        total_balance = sum(summary.values())
+        if total_balance != 0:
+            print("警告: 財務諸表の残高合計が0ではありません。")
+            
+        return summary, total_revenue, total_expense
+    
+    def display_trial_balance(self):
         """財務状況を表示(残高試算表の作成)"""
         summary = self.execute_settlement()
         print("\n\n残高試算表:\n")
@@ -283,7 +300,7 @@ def main():
     ledger.display_transaction_history()
     
     # 残高試算表の表示
-    ledger.display_balance()
+    ledger.display_trial_balance()
         
     # 財務諸表を表示
     ledger.display_financial_statements(end_1)
@@ -323,7 +340,7 @@ def main():
     ledger.display_transaction_history()
     
     # 残高試算表の表示
-    ledger.display_balance()
+    ledger.display_trial_balance()
         
     # 財務諸表を表示
     ledger.display_financial_statements(end_2)
