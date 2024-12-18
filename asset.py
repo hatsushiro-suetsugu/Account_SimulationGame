@@ -47,6 +47,8 @@ class Inventory(Asset):
         super().__init__(name, value = quantity*price)
         self.quantity = quantity
         self.price = price
+        self.market_price = price # 正味売却価額(予定)
+        self.market_value = self.market_price * price
         self.valuation = valuation
         self.transactions = [] # 在庫の追加履歴
         if valuation not in self.VALUATIONS:
@@ -55,14 +57,32 @@ class Inventory(Asset):
         if self.valuation == "FIFO":
             # FIFO用のリストデータ構造を初期化
             self.inventory_data = [{"quantity": quantity, "price": price}]
+            
+        if self.valuation == "GAM":
+            # GAM用のデータ構造を初期化
+            self.total_quantity = quantity
+            self.total_value = quantity * price
     
     def _record_transaction(self, time:datetime, description):
         transaction = {time : description}
         self.transactions.append(transaction)
     
-    def add_inventory(self, quantity, price):
+    def update_value(self, new_value):
+        """簿価の更新（決算時の評価損などで使用予定）"""
+        self.value = new_value
+        self.price = self.value / self.quantity
+       
+    def update_market_value(self): 
+        pass
+        
+    def update_market_price(self, new_price):
+        """市場価格の更新"""
+        self.market_price = new_price
+        self.market_value = self.market_price * self.quantity
+    
+    def add_inventory(self, quantity: int, price: int, fringe_cost = 0):
         """棚卸資産の増加"""
-        add_value = quantity * price
+        add_value = quantity * price + fringe_cost
         self.value += add_value
         self.quantity += quantity
 
@@ -72,6 +92,14 @@ class Inventory(Asset):
         elif self.valuation == "MAM":
             # MAMの場合は新しい平均単価を計算
             self.price = self.value / self.quantity
+        elif self.valuation == "GAM":
+            # GAMの場合は合計数量と金額を更新
+            self.total_quantity += quantity
+            self.total_value += add_value
+        
+        # 市場価値の再計算(仮で設定)
+        self.market_value = self.market_price * self.quantity
+
         
         if self.valuation == "MAM":
             self.price = self.value / self.quantity
@@ -80,16 +108,16 @@ class Inventory(Asset):
             description = f"add_inventory: {quantity}"
         self._record_transaction(datetime.today(), description= description)
         
-    def substract_inventory(self, quantity):
+    def subtract_inventory(self, quantity: int):
         """棚卸資産の減少"""
         if self.valuation == "FIFO":
-            self._substract_inventory_FIFO(quantity)
+            self._subtract_inventory_FIFO(quantity)
         elif self.valuation == "MAM":
-            self._substract_inventory_MAM(quantity)
+            self._subtract_inventory_MAM(quantity)
         elif self.valuation == "GAM":
-            self._substract_inventory_GAM(quantity)
+            self._subtract_inventory_GAM(quantity)
         
-    def _substract_inventory_FIFO(self, quantity):
+    def _subtract_inventory_FIFO(self, quantity: int):
         """FIFOによる棚卸資産の減少"""
         if quantity > self.quantity:
             raise ValueError("在庫不足です。指定された数量を引き出せません。")
@@ -125,7 +153,7 @@ class Inventory(Asset):
         self._record_transaction(datetime.now(), description)
         print(f"在庫が {quantity} 単位減少しました。総コスト: {total_cost}")
     
-    def _substract_inventory_MAM(self, quantity):
+    def _subtract_inventory_MAM(self, quantity):
         """MAMによる棚卸資産の減少"""
         if quantity > self.quantity:
             raise ValueError("在庫不足です。指定された数量を引き出せません。")
@@ -142,9 +170,25 @@ class Inventory(Asset):
         self._record_transaction(datetime.now(), description)
         print(f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}")
     
-    def _substract_inventory_GAM():
-        """GAMによる棚卸資産の減少(未実装)"""
-        pass
+    def _subtract_inventory_GAM(self, quantity: int):
+        """GAMによる棚卸資産の減少"""
+        if quantity > self.quantity:
+            raise ValueError("在庫不足です。指定された数量を引き出せません。")
+
+        # 総平均単価を計算
+        average_price = self.total_value / self.total_quantity
+        total_cost = average_price * quantity
+
+        # 更新
+        self.total_value -= total_cost
+        self.total_quantity -= quantity
+        self.value -= total_cost
+        self.quantity -= quantity
+
+        # 減少トランザクションを記録
+        description = f"Subtracted {quantity} units (GAM) at average price {average_price}"
+        self._record_transaction(datetime.now(), description)
+        print(f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}")
     
 class Debt:
     # リスクフリーレートの設定(将来的にランダムに動くように関数化)
@@ -162,4 +206,60 @@ class Debt:
         interest = (self.value * self.rate) * days / years
     
 def main():
-    pass
+    # FIFOのテスト
+    print("\n=== FIFO テスト ===")
+    fifo_inventory = Inventory("FIFO Product", 100, 50, "FIFO")
+    fifo_inventory.add_inventory(50, 55)
+    fifo_inventory.add_inventory(100, 60)
+    print("在庫減少前の在庫数:", fifo_inventory.quantity)
+    print("在庫減少前の在庫内容:", fifo_inventory.inventory_data)
+
+    try:
+        fifo_inventory.subtract_inventory(120)
+    except ValueError as e:
+        print("エラー:", e)
+    
+    fifo_inventory.add_inventory(75, 65)
+
+    print("在庫減少後の在庫数:", fifo_inventory.quantity)
+    print("在庫減少後の在庫内容:", fifo_inventory.inventory_data)
+
+    # MAMのテスト
+    print("\n=== MAM テスト ===")
+    mam_inventory = Inventory("MAM Product", 100, 50, "MAM")
+    mam_inventory.add_inventory(50, 55)
+    mam_inventory.add_inventory(100, 60)
+    print("在庫減少前の在庫数:", mam_inventory.quantity)
+    print("在庫減少前の平均単価:", mam_inventory.price)
+
+    try:
+        mam_inventory.subtract_inventory(120)
+    except ValueError as e:
+        print("エラー:", e)
+        
+    mam_inventory.add_inventory(75, 65)
+
+    print("在庫減少後の在庫数:", mam_inventory.quantity)
+    print("在庫減少後の平均単価:", mam_inventory.price)
+
+    # GAMのテスト
+    print("\n=== GAM テスト ===")
+    gam_inventory = Inventory("GAM Product", 100, 50, "GAM")
+    gam_inventory.add_inventory(50, 55)
+    gam_inventory.add_inventory(100, 60)
+    print("在庫減少前の在庫数:", gam_inventory.quantity)
+    print("在庫減少前の総価値:", gam_inventory.total_value)
+    print("在庫減少前の平均単価:", gam_inventory.total_value / gam_inventory.total_quantity)
+
+    try:
+        gam_inventory.subtract_inventory(120)
+    except ValueError as e:
+        print("エラー:", e)
+
+    gam_inventory.add_inventory(75, 65)
+
+    print("在庫減少後の在庫数:", gam_inventory.quantity)
+    print("在庫減少後の総価値:", gam_inventory.total_value)
+
+if __name__ == "__main__":
+    main()
