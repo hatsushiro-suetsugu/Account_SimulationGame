@@ -14,7 +14,7 @@ class Asset:
         std_dev = mean / 6
         self.market_value = max(0, int(random.gauss(mean, std_dev)))
 
-class TangibleAsset(Asset):
+class Tangible(Asset):
     def __init__(self, name, value, owner, useful_life, salvage_value=0):
         """有形固定資産クラス"""
         super().__init__(name, value)
@@ -30,7 +30,7 @@ class TangibleAsset(Asset):
         self.value = max(self.salvage_value, self.value - depreciation)
         return depreciation
 
-class Building(TangibleAsset):
+class Building(Tangible):
     def __init__(self, name, value, owner, useful_life = 30, salvage_value=0):
         super().__init__(name, value, owner, useful_life, salvage_value)
         

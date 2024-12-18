@@ -8,7 +8,7 @@ import manager
 
 class GameMaster:
     ASSET_TYPES = {
-        "tangible": {"class": asset.TangibleAsset, "description": "固定資産"},
+        "tangible": {"class": asset.Tangible, "description": "固定資産"},
         "building": {"class": asset.Building, "description": "建物"},
         "inventory": {"class": asset.Inventory, "description": "棚卸資産"}
     }
@@ -206,10 +206,8 @@ def main():
     player1 = Player("player1",game_master)
     player2 = Player("player2",game_master)
     
-    game_master.construct_instance("building", 
-                                   "building_1", 
-                                   value = 6000,
-                                   owner = "")
+    game_master.construct_instance("inventory", "product_A")
+    player1.redister_product(prduct_A)
     
     
 if __name__ == "__main__":

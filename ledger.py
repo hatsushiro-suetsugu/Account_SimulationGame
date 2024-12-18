@@ -150,7 +150,7 @@ class Ledger:
             
         return summary, total_revenue, total_expense
     
-    def display_trial_balance(self):
+    def display_trial_balance(self, summary: dict):
         """財務状況を表示(残高試算表の作成)"""
         summary = self.execute_settlement()
         print("\n\n残高試算表:\n")
