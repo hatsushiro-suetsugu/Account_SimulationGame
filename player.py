@@ -16,6 +16,7 @@ class GameMaster:
     def __init__(self, start_date="2024-01-01"):
         """ゲームマスターの初期化"""
         self.current_date = datetime.strptime(start_date, "%Y-%m-%d")
+        self.players = []
         self.event_log = []
         self.asset_registry = {}  # 全資産の管理
         
@@ -101,13 +102,14 @@ class Player:
     def __init__(self, name :chr, game_master: GameMaster, initial_cash=5000):
         """"Playerクラス"""
         self.name = name
-        self.game_master = GameMaster()
+        self.game_master = game_master
         self.ledger_manager = ledger.Ledger()
         # 各マネージャーオブジェクトの設定
         
         # Playerの保持するアセット情報
         self.assets = [] # {"name": name,"asset": product}
         self.debts = []
+        self.product_lists = []
 
         # 初期現金の設定
         self.ledger_manager.execute_transaction([
@@ -143,10 +145,12 @@ class Player:
             raise ValueError("取得価額は0より大きくなければなりません")
     
         product.add_inventory(quantity, price, fringe_cost)
-        value = quantity * price + fringe_cost
+        purchase_cost = quantity * price + fringe_cost
+        # 仕入帳、勘定元帳への記入
+        self.product_lists.append({"name": product.name, "quantity": purchase_cost})
         self.ledger_manager.execute_transaction([
-            ("仕入", value),
-            ("現金", -value)
+            ("仕入", purchase_cost),
+            ("現金", -purchase_cost)
         ], description=f"商品の仕入れ　商品名：{product.name} 個数：{quantity} 単価：{price}")
         
     def sale_product(self, product: asset.Inventory, 
@@ -154,16 +158,19 @@ class Player:
         """商品の販売"""
         if sale_price <= 0 :
             print("警告：売価が0になっています") 
-            
         product.subtract_inventory(quantity)   
         sale_value = quantity * sale_price - revert 
+        # 勘定元帳への記入
         self.ledger_manager.execute_transaction([
             ("現金", sale_value),
             ("売上高", -sale_value)
         ])
     
     def take_inventory(self, product: asset.Inventory, loss = 0):
-        """商品の棚卸し""" 
+        """
+        商品の棚卸し
+        棚卸減耗・商品評価損は売上原価に入れる(暫定)
+        """ 
         old_price = product.price
         old_quantity = product.quantity
         new_price = product.market_price
@@ -179,11 +186,19 @@ class Player:
         # 商品評価損の記録
         appraisal_loss = (old_price - new_price) * new_quantity
         
+        purchase_for_the_product = 0
+        for list in self.product_lists:
+            if list["name"] == product.name:
+                purchase_for_the_product += list["quantity"]
+                
+        cost_of_sales = purchase_for_the_product - new_value 
         self.ledger_manager.execute_transaction([
-            ("売上原価", 400),
-            ("仕入", -450),
-            ("棚卸資産", 50)
+            ("売上原価", cost_of_sales),
+            ("仕入", -purchase_for_the_product),
+            ("棚卸資産", new_value)
         ])
+        
+        self.product_lists = []
         
 def main():
     # サンプルコード

@@ -92,15 +92,15 @@ class Ledger:
         }
         self._transactions.append(transaction)
 
-    def execute_settlement(self, tangible_assets:list) -> dict:
+    def execute_settlement(self) -> dict:
         """
         (決算整理)
         剰余金の計算
-        減価償却の実行(予定)
+        減価償却の実行(予定) -> Player or Manager でやるべき！
         その他決算整理事項の実行(予定)
         帳簿の閉鎖：Ledgerの初期化
         """
-        self._execute_depreciation(tangible_assets)
+        # self._execute_depreciation(tangible_assets)
         
         summary, total_revenue, total_expense = self._get_trial_balance()
 
@@ -120,14 +120,14 @@ class Ledger:
             
         return summary
     
-    def _execute_depreciation(self, tangible_assets:list):
-        """(決算整理)減価償却の実行"""
-        for asset in tangible_assets:
-            depreciation = asset.apply_depreciation()
-            self.execute_transaction([
-                ("減価償却費", depreciation),
-                ("減価償却累計額", depreciation)
-            ], description= f"{asset.name}の減価償却の実行")
+    # def _execute_depreciation(self, tangible_assets:list):
+    #     """(決算整理)減価償却の実行"""
+    #     for asset in tangible_assets:
+    #         depreciation = asset.apply_depreciation()
+    #         self.execute_transaction([
+    #             ("減価償却費", depreciation),
+    #             ("減価償却累計額", depreciation)
+    #         ], description= f"{asset.name}の減価償却の実行")
     
     def _get_trial_balance(self) -> dict:
         """残高試算表の作成"""

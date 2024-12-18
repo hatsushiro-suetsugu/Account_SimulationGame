@@ -197,7 +197,8 @@ class Debt:
         self.name = name
         self.bank = bank
         self.value = value
-        self.rate = 0.05 # 利率
+        self.risk_premium = 0.05
+        self.rate = self.RFR + self.risk_premium # 利率
         
     def repay_debt(self, repay_value):
         self.value =- repay_value
