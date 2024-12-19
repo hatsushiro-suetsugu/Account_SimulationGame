@@ -25,15 +25,27 @@ class GameMaster:
         asset_id = str(uuid.uuid4())
 
         if asset_type == "building":
-            asset_instance = asset.Building(name, *args, **kwargs)
+            asset_instance = self._construct_tangible(name, *args, **kwargs)
         elif asset_type == "inventory":
-            asset_instance = asset.Inventory(name, *args, **kwargs)
+            asset_instance = self._construct_inventory(name, *args, **kwargs)
         else:
             raise ValueError(f"無効な資産タイプ: {asset_type}")
 
         self.asset_registry[asset_id] = asset_instance
         print(f"資産 '{name}' (ID: {asset_id}) が登録されました。")
         return asset_id, asset_instance
+    
+    def _construct_tangible(self, name, value, owner, useful_life, salvage_value):
+        asset_instance = asset.Tangible(name, value, owner, useful_life, salvage_value)
+        
+        return asset_instance
+    
+    def _construct_inventory(self, name, valuation = "FIFO"):
+        asset_instance = asset.Inventory(name, quantity=0, price=0, valuation = valuation)
+        
+        return asset_instance
+    
+    
 
     def get_asset_by_id(self, asset_id):
         """資産IDを基に資産情報を取得"""
@@ -107,9 +119,9 @@ class Player:
         # 各マネージャーオブジェクトの設定
         
         # Playerの保持するアセット情報
-        self.assets = [] # {"name": name,"asset": product}
-        self.debts = []
+        self.portfolio = []    # list({"name": name,"asset": product})
         self.product_lists = []
+        self.ends = [] #決算情報
 
         # 初期現金の設定
         self.ledger_manager.execute_transaction([
@@ -125,18 +137,22 @@ class Player:
             raise ValueError("取得価額は0より大きくなければなりません")
         else:
             target = asset.Building(name, value, self)
-            self.assets.append(target)
+            self.portfolio.append(target)
             self.ledger_manager.execute_transaction([
                 ("建物", target.value),
                 ("現金", -target.value)
             ], description=f"建物の取得　建物名：{name}")
     
-    def redister_product(self, product:asset.Inventory, name):
+    def redister_product(self, name, valuation="FIFO"):
         """商品の登録"""
-        if product not in self.game_master.asset_registry:
-            raise ("この商品は存在しません")
-        product
-        self.assets.append({"name": name, "asset": product})
+        # if product not in self.game_master.asset_registry:
+        #     raise ("この商品は存在しません")
+        # product
+        # self.assets.append({"name": name, "asset": product})
+        product = asset.Inventory(name,quantity=0, price=0, valuation=valuation)
+        self.portfolio.append({"name" : product.name, 
+                               "asset_type" : product.__class__})
+        return product
             
     def purchase_product(self, product: asset.Inventory, 
                          quantity: int, price: int, fringe_cost = 0):
@@ -154,49 +170,32 @@ class Player:
         ], description=f"商品の仕入れ　商品名：{product.name} 個数：{quantity} 単価：{price}")
         
     def sale_product(self, product: asset.Inventory, 
-                     quantity: int, sale_price: int, revert = 0):
+                     quantity: int, sales_price = None, revert = 0):
         """商品の販売"""
-        if sale_price <= 0 :
+        if sales_price <= 0 :
             print("警告：売価が0になっています") 
-        product.subtract_inventory(quantity)   
-        sale_value = quantity * sale_price - revert 
+        product.subtract_inventory(quantity, sales_price)   
+        sale_value = quantity * sales_price - revert 
         # 勘定元帳への記入
         self.ledger_manager.execute_transaction([
             ("現金", sale_value),
             ("売上高", -sale_value)
-        ])
+        ],  description=f"商品の売上 商品名：{product.name} 個数：{quantity} 単価：{product.sales_price}")
     
-    def take_inventory(self, product: asset.Inventory, loss = 0):
-        """
-        商品の棚卸し
-        棚卸減耗・商品評価損は売上原価に入れる(暫定)
-        """ 
-        old_price = product.price
-        old_quantity = product.quantity
-        new_price = product.market_price
-        new_quantity = old_quantity - loss
-        if old_price < new_price:
-            new_value = new_price * new_quantity
-        else:
-            new_value = old_price * new_quantity
-        # 棚卸減耗の記録
-        inventory_shortage = old_price * loss    
-        product.quantity -= loss
-        
-        # 商品評価損の記録
-        appraisal_loss = (old_price - new_price) * new_quantity
-        
-        purchase_for_the_product = 0
-        for list in self.product_lists:
-            if list["name"] == product.name:
-                purchase_for_the_product += list["quantity"]
-                
-        cost_of_sales = purchase_for_the_product - new_value 
+    def perform_inventory_audit(self, product: asset.Inventory, loss=0):
+        """棚卸調整と売上原価計算"""
+        inventory_shortage, appraisal_loss, new_value = product.perform_inventory_adjustment(loss)
+
+        # 売上原価計算
+        total_purchase = sum(item["quantity"] for item in self.product_lists if item["name"] == product.name)
+        cost_of_sales = total_purchase - new_value
+
+        # 勘定元帳への記録
         self.ledger_manager.execute_transaction([
             ("売上原価", cost_of_sales),
-            ("仕入", -purchase_for_the_product),
+            ("仕入", -total_purchase),
             ("棚卸資産", new_value)
-        ])
+        ], description=f"棚卸調整 商品: {product.name}")
         
         self.product_lists = []
         
@@ -206,8 +205,26 @@ def main():
     player1 = Player("player1",game_master)
     player2 = Player("player2",game_master)
     
-    game_master.construct_instance("inventory", "product_A")
-    player1.redister_product(prduct_A)
+    product_A = player1.redister_product(name="Product_A")
+    
+    player1.purchase_product(product_A, 100, 150)
+    player1.purchase_product(product_A, 200, 120, 15)
+    player1.sale_product(product_A, 80, 200)
+    player1.purchase_product(product_A, 30, 160)
+    player1.sale_product(product_A, 100, 225)
+    player1.sale_product(product_A, 100, 210, 500)
+    
+    player1.perform_inventory_audit(product_A, 5)
+    
+    ledger1 = player1.ledger_manager
+    
+    end_1 = ledger1.execute_settlement()
+    
+    ledger1.display_transaction_history()
+    ledger1.display_trial_balance(end_1)
+    ledger1.display_financial_statements(end_1)
+    
+    
     
     
 if __name__ == "__main__":
