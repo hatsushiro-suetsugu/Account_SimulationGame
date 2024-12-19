@@ -11,7 +11,7 @@ class Asset:
     def update_market_value(self):
         """市場価格をランダムに更新"""
         mean = self.value
-        std_dev = mean / 6
+        std_dev = mean / 10
         self.market_value = max(0, int(random.gauss(mean, std_dev)))
 
 class Tangible(Asset):
@@ -72,12 +72,21 @@ class Inventory(Asset):
         self.value = new_value
         self.price = self.value / self.quantity
        
-    def update_market_value(self): 
-        pass
+    def update_market_value(self):
+        """
+        市場価格をランダムに更新
+        Inventory : 単価で実行する
+        """
+        mean = self.price
+        std_dev = mean / 10
+        new_market_price = max(0, int(random.gauss(mean, std_dev)))
+                
+        return new_market_price
         
     def update_market_price(self, new_price):
-        """市場価格の更新"""
-        self.market_price = new_price
+        """価格の更新"""
+        self.price = new_price
+        self.market_price = self.update_market_value() # ランダム化するアルゴリズムを追加
         self.market_value = self.market_price * self.quantity
     
     def add_inventory(self, quantity: int, price: int, fringe_cost = 0):
@@ -96,17 +105,16 @@ class Inventory(Asset):
             # GAMの場合は合計数量と金額を更新
             self.total_quantity += quantity
             self.total_value += add_value
-        
-        # 市場価値の再計算(仮で設定)
-        self.market_value = self.market_price * self.quantity
-
-        
+                
         if self.valuation == "MAM":
             self.price = self.value / self.quantity
             description= f"add_inventory: {quantity}, update_price(MAM): {self.price}"
         else:
             description = f"add_inventory: {quantity}"
         self._record_transaction(datetime.today(), description= description)
+        
+        # 市場価格の更新
+        self.update_market_price(price)
         
     def subtract_inventory(self, quantity: int):
         """棚卸資産の減少"""
