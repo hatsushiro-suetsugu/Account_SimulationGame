@@ -61,6 +61,18 @@
             "sub_category": "営業費用"
         },
         {
+            "name": "棚卸減耗",
+            "statement": "損益計算書",
+            "category" : "費用",
+            "sub_category":"営業費用"
+        },
+        {
+            "name": "商品評価損",
+            "statement":"損益計算書",
+            "category":"費用",
+            "sub_category":"営業費用"
+        },
+        {
             "name": "借入金",
             "statement": "貸借対照表",
             "category": "負債",

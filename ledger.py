@@ -96,15 +96,13 @@ class Ledger:
         """
         (決算整理)
         剰余金の計算
-        減価償却の実行(予定) -> Player or Manager でやるべき！
-        その他決算整理事項の実行(予定)
         帳簿の閉鎖：Ledgerの初期化
         """
         # self._execute_depreciation(tangible_assets)
         
         summary, total_revenue, total_expense = self._get_trial_balance()
 
-        # 純損益を計算
+        # 当期純利益を計算
         net_income = total_revenue + total_expense  # 費用は正値なので足す
         if net_income != 0:
             self._update_account("利益剰余金", net_income)
@@ -225,8 +223,8 @@ class Ledger:
                         print(f"        {name}: ({-balance})")
                     else:
                         pass
-        # 純損益の表示
-        print(f"\n純損益: {summary['純損益']:,}")
+        # 当期純利益の表示
+        print(f"\n当期純利益: {summary['当期純利益']:,}")
 
     def _get_transaction_history(self):
         """トランザクション履歴を取得"""
