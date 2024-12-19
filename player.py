@@ -29,13 +29,25 @@ class GameMaster:
             "building"  :建物
         """
         asset_id = str(uuid.uuid4())
+        
+        match asset_type:
+            case "inventory":
+                asset_instance = self._construct_inventory(name, *args, **kwargs)
+            case "tangible":
+                asset_instance = self._construct_tangible(name, *args, **kwargs)
+            case "building":
+                asset_instance = self._construct_building(name, *args, **kwargs)
+            case "machine" :
+                pass
+            case _:
+                raise ValueError(f"無効な資産タイプ: {asset_type}")                
 
-        if asset_type == "building":
-            asset_instance = self._construct_tangible(name, *args, **kwargs)
-        elif asset_type == "inventory":
-            asset_instance = self._construct_inventory(name, *args, **kwargs)
-        else:
-            raise ValueError(f"無効な資産タイプ: {asset_type}")
+        # if asset_type == "tangible":
+        #     asset_instance = self._construct_tangible(name, *args, **kwargs)
+        # elif asset_type == "inventory":
+        #     asset_instance = self._construct_inventory(name, *args, **kwargs)
+        # else:
+        #     raise ValueError(f"無効な資産タイプ: {asset_type}")
 
         self.asset_registry[asset_id] = asset_instance
         print(f"資産 '{name}' (ID: {asset_id}, クラス: {asset_type}) が登録されました。")
@@ -45,13 +57,19 @@ class GameMaster:
         asset_instance = asset.Tangible(name, value, owner, useful_life, salvage_value)
         return asset_instance
     
+    def _construct_building(self, name, value, owner, address):
+        asset_instance = asset.Building(name, value, owner, address)
+        return asset_instance
+    
     def _construct_inventory(self, name, valuation = "FIFO"):
         asset_instance = asset.Inventory(name, quantity=0, price=0, valuation = valuation)
-        
         return asset_instance
     
     def get_asset_by_id(self, asset_id):
-        """資産IDを基に資産情報を取得"""
+        """資産IDを基に資産情報を照合＆取得"""
+        if asset_id not in self.asset_registry.keys():
+            raise IndexError(f"ID:'{id}'に該当するアセットが登録されていません")
+    
         return self.asset_registry.get(asset_id, None)
 
     def display_assets(self):
@@ -134,27 +152,34 @@ class Player:
 
     """プレイメソッド(Managerを介さず直接行う場合)"""
 
-    def aquire_building(self, name: chr, value: int):
+    def aquire_building(self, id : chr, value: int):
         """建物の(登録＆)取得"""
+        try:
+            target = self.game_master.get_asset_by_id(id)
+        except IndexError as e:
+            print("エラー(建物の取得)：{e}")
+        
         if value <= 0 :
             raise ValueError("取得価額は0より大きくなければなりません")
-        else:
-            target = asset.Building(name, value, self)
-            self.portfolio.append(target)
-            self.ledger_manager.execute_transaction([
-                ("建物", target.value),
-                ("現金", -target.value)
-            ], description=f"建物の取得　建物名：{name}")
     
-    def redister_product(self, name, valuation="FIFO"):
+        
+        
+        self.portfolio.append({"name": target.name,
+                                "asset_type": target.__class__})
+        self.ledger_manager.execute_transaction([
+            ("建物", target.value),
+            ("現金", -target.value)
+        ], description=f"建物の取得　建物名：{target.name}")
+    
+    def redister_product(self, id, valuation="FIFO"):
         """商品の登録"""
-        # if product not in self.game_master.asset_registry:
-        #     raise ("この商品は存在しません")
-        # product
-        # self.assets.append({"name": name, "asset": product})
-        product = asset.Inventory(name,quantity=0, price=0, valuation=valuation)
-        self.portfolio.append({"name" : product.name, 
+        try:
+            product = self.game_master.get_asset_by_id(id)
+        except IndexError as e:
+            print("エラー(建物の取得)：{e}")
+        self.portfolio.append({"name": product.name, 
                                "asset_type" : product.__class__})
+        print(f"[{self.name}]**商品が登録されました** 商品名：{product.name}")
         return product
             
     def purchase_product(self, product: asset.Inventory, 
@@ -176,7 +201,7 @@ class Player:
                      quantity: int, sales_price = None, revert = 0):
         """商品の販売"""
         if sales_price:
-            print(f"売価が更新されました　更新後：{sales_price}")
+            print(f"[{self.name},{product.name}]**売価が更新されました**　更新後：{sales_price}")
             if sales_price <= 0 :
                 print("警告：売価が0以下になっています") 
         product.subtract_inventory(quantity, sales_price)   

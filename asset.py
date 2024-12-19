@@ -15,26 +15,63 @@ class Asset:
         self.market_value = max(0, int(random.gauss(mean, std_dev)))
 
 class Tangible(Asset):
-    def __init__(self, name, value, owner, useful_life, salvage_value=0):
-        """有形固定資産クラス"""
+    METHODS = {"straight_line", "accelarated"}
+    
+    def __init__(
+        self,
+        name:chr,
+        value:int,
+        owner:chr,
+        useful_life:int,
+        salvage_value_ratio:float, 
+        method:str
+        ):
+        """有形固定資産クラス
+
+        Args:
+            name (chr): 資産名
+            value (int): 取得価額
+            owner (chr): 所有者
+            useful_life (int): 耐用年数
+            salvage_value_ratio (float): 残存価額比率
+            method (chr): 減価償却方法(定額法, 定率法(予定))
+
+        Raises:
+            ValueError: 無効な減価償却方法です
+        """
         super().__init__(name, value)
         self.owner = owner
+        self.method = method 
         self.useful_life = useful_life  # 耐用年数 (年単位)
-        self.salvage_value = salvage_value # 残存価額
+        self.salvage_value = value * salvage_value_ratio # 残存価額
         self.accumulated_depreciation = 0  # 減価償却累計額
+        
+        if self.method not in self.METHODS :
+            raise ValueError("無効な減価償却方法です")
 
     def apply_depreciation(self):
         """減価償却を適用：(帳簿価額-残存価額:デフォルトでゼロ)/耐用年数"""
-        depreciation = self.value - self.salvage_value / self.useful_life
-        self.accumulated_depreciation += depreciation
-        self.value = max(self.salvage_value, self.value - depreciation)
-        return depreciation
+        # 定額法
+        if self.method == "straighr_line":
+            depreciation = self.value - self.salvage_value / self.useful_life
+            self.accumulated_depreciation += depreciation
+            self.value = max(self.salvage_value, self.value - depreciation)
+            return depreciation
+        # 定率法
+        elif self.method == "accelarated":
+            pass
 
 class Building(Tangible):
-    def __init__(self, name, value, owner, useful_life = 30, salvage_value=0):
-        super().__init__(name, value, owner, useful_life, salvage_value)
-        
+    def __init__(self, name, value, owner, address, 
+                 useful_life=40, salvage_value_ratio=0, method="straght_line"):
+        super().__init__(name, value, owner, 
+                         useful_life, salvage_value_ratio, method)
+        self.address = address
 
+class Machine(Tangible):
+    def __init__(self, name, value, owner, 
+                 useful_life, salvage_value_ratio=0):
+        super().__init__(name, value, owner, useful_life, salvage_value_ratio)
 
 class Inventory(Asset):
     VALUATIONS = ["FIFO", "GAM", "MAM"] # 先入先出法、総平均法、移動平均法
@@ -164,9 +201,9 @@ class Inventory(Asset):
         self.quantity -= quantity
 
         # 減少トランザクションを記録
-        description = f"Subtracted {quantity} units (FIFO)"
+        description = f"在庫が {quantity} 単位減少しました。総コスト: {total_cost}"
         self._record_transaction(description)
-        print(f"在庫が {quantity} 単位減少しました。総コスト: {total_cost}")
+        # print(f"在庫が {quantity} 単位減少しました。総コスト: {total_cost}")
     
     def _subtract_inventory_MAM(self, quantity):
         """MAMによる棚卸資産の減少"""
