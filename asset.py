@@ -11,7 +11,7 @@ class Asset:
     def update_market_value(self):
         """市場価格をランダムに更新"""
         mean = self.value
-        std_dev = mean / 6
+        std_dev = mean / 10
         self.market_value = max(0, int(random.gauss(mean, std_dev)))
 
 class Tangible(Asset):
@@ -47,10 +47,11 @@ class Inventory(Asset):
         super().__init__(name, value = quantity*price)
         self.quantity = quantity
         self.price = price
-        self.market_price = price # 正味売却価額(予定)
-        self.market_value = self.market_price * price
-        self.valuation = valuation
-        self.transactions = [] # 在庫の追加履歴
+        self.sales_price = price                                    # 売価
+        self.market_sales_price = self.sales_price                  # 正味売却単価(予定)
+        self.market_sales_value = self.market_sales_price * price   # 正味売却価額(予定)
+        self.valuation = valuation                                  # 棚卸資産の評価方法
+        self.transactions = []                                      # 在庫の追加履歴 list({})
         if valuation not in self.VALUATIONS:
             raise ValueError("正しい評価方法を選択してください")
 
@@ -63,22 +64,35 @@ class Inventory(Asset):
             self.total_quantity = quantity
             self.total_value = quantity * price
     
-    def _record_transaction(self, time:datetime, description):
-        transaction = {time : description}
+    def _record_transaction(self, description):
+        transaction = {
+            "time": datetime.now(),
+            "description": description,
+            "quantity": self.quantity,
+            "value": self.value
+        }
         self.transactions.append(transaction)
     
     def update_value(self, new_value):
-        """簿価の更新（決算時の評価損などで使用予定）"""
+        """簿価の更新"""
         self.value = new_value
         self.price = self.value / self.quantity
-       
-    def update_market_value(self): 
-        pass
-        
-    def update_market_price(self, new_price):
-        """市場価格の更新"""
-        self.market_price = new_price
-        self.market_value = self.market_price * self.quantity
+
+    def update_market_sales_price(self):
+        """市場売価をランダムに更新"""
+        mean = self.sales_price  # 売価を基準にする
+        std_dev = mean / 10
+        self.market_sales_price = max(0, int(random.gauss(mean, std_dev))) 
+        description = (f"市場売価が更新されました: {self.market_sales_price}")
+        self._record_transaction(description)        
+    
+    def update_sales_price(self, new_price):
+        """売価の更新"""
+        old_price = self.sales_price
+        self.sales_price = new_price
+        description = (f"売価更新: 旧売価 {old_price}, 新売価 {new_price}, 在庫数量 {self.quantity}, "
+                       f"在庫簿価 {self.value}")
+        self._record_transaction(description)
     
     def add_inventory(self, quantity: int, price: int, fringe_cost = 0):
         """棚卸資産の増加"""
@@ -96,19 +110,15 @@ class Inventory(Asset):
             # GAMの場合は合計数量と金額を更新
             self.total_quantity += quantity
             self.total_value += add_value
-        
-        # 市場価値の再計算(仮で設定)
-        self.market_value = self.market_price * self.quantity
-
-        
+                
         if self.valuation == "MAM":
             self.price = self.value / self.quantity
-            description= f"add_inventory: {quantity}, update_price(MAM): {self.price}"
+            description= f"商品の追加: {quantity}, 更新原価(MAM): {self.price}"
         else:
-            description = f"add_inventory: {quantity}"
-        self._record_transaction(datetime.today(), description= description)
+            description = f"商品の追加: {quantity}"
+        self._record_transaction(description)
         
-    def subtract_inventory(self, quantity: int):
+    def subtract_inventory(self, quantity: int, sales_price = None):
         """棚卸資産の減少"""
         if self.valuation == "FIFO":
             self._subtract_inventory_FIFO(quantity)
@@ -116,6 +126,11 @@ class Inventory(Asset):
             self._subtract_inventory_MAM(quantity)
         elif self.valuation == "GAM":
             self._subtract_inventory_GAM(quantity)
+            
+        # 売価の更新
+        if sales_price:
+            self.update_sales_price(new_price=sales_price)
+            self.update_market_sales_price() 
         
     def _subtract_inventory_FIFO(self, quantity: int):
         """FIFOによる棚卸資産の減少"""
@@ -150,7 +165,7 @@ class Inventory(Asset):
 
         # 減少トランザクションを記録
         description = f"Subtracted {quantity} units (FIFO)"
-        self._record_transaction(datetime.now(), description)
+        self._record_transaction(description)
         print(f"在庫が {quantity} 単位減少しました。総コスト: {total_cost}")
     
     def _subtract_inventory_MAM(self, quantity):
@@ -166,10 +181,9 @@ class Inventory(Asset):
         self.quantity -= quantity
 
         # 減少トランザクションを記録
-        description = f"Subtracted {quantity} units (MAM) at average price {average_price}"
-        self._record_transaction(datetime.now(), description)
-        print(f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}")
-    
+        description = f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}"
+        self._record_transaction(description)
+        
     def _subtract_inventory_GAM(self, quantity: int):
         """GAMによる棚卸資産の減少"""
         if quantity > self.quantity:
@@ -186,9 +200,24 @@ class Inventory(Asset):
         self.quantity -= quantity
 
         # 減少トランザクションを記録
-        description = f"Subtracted {quantity} units (GAM) at average price {average_price}"
-        self._record_transaction(datetime.now(), description)
-        print(f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}")
+        description = f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}"
+        self._record_transaction(description)
+        # print(f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}")
+        
+    def perform_inventory_adjustment(self, loss):
+        """棚卸調整: 減耗や評価損を計算し在庫を更新"""
+        old_price = self.price
+        new_price = self.market_sales_price  # 市場価格を更新
+        old_quantity = self.quantity
+        new_quantity = old_quantity - loss
+
+        inventory_shortage = old_price * loss  # 棚卸減耗
+        appraisal_loss = max(0, (old_price - new_price) * new_quantity)  # 商品評価損
+
+        self.quantity = new_quantity
+        self.value = new_price * new_quantity  # 更新簿価
+
+        return inventory_shortage, appraisal_loss, self.value
     
 class Debt:
     # リスクフリーレートの設定(将来的にランダムに動くように関数化)
@@ -261,6 +290,7 @@ def main():
 
     print("在庫減少後の在庫数:", gam_inventory.quantity)
     print("在庫減少後の総価値:", gam_inventory.total_value)
+    print("在庫減少前の平均単価:", gam_inventory.total_value / gam_inventory.total_quantity)
 
 if __name__ == "__main__":
     main()
