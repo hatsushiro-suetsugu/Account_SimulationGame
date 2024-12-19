@@ -185,7 +185,10 @@ class Inventory(Asset):
         self._record_transaction(description)
         
     def _subtract_inventory_GAM(self, quantity: int):
-        """GAMによる棚卸資産の減少"""
+        """
+        GAMによる棚卸資産の減少
+        todo:期末に単価を評価する方法を確立する
+        """
         if quantity > self.quantity:
             raise ValueError("在庫不足です。指定された数量を引き出せません。")
 
