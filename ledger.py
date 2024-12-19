@@ -108,7 +108,7 @@ class Ledger:
         net_income = total_revenue + total_expense  # 費用は正値なので足す
         if net_income != 0:
             self._update_account("利益剰余金", net_income)
-        summary["純損益"] = -net_income
+        summary["当期純利益"] = -net_income
         
         # 帳簿の閉鎖 -> PLの初期化
         for account in self._accounts.values():
