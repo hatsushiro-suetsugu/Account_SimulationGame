@@ -20,7 +20,7 @@ class GameMaster:
         self.event_log = []
         self.asset_registry = {}  # 全資産の管理
         
-    def construct_instance(self, asset_type, name, *args, **kwargs):
+    def construct_instance(self, asset_type, name, *args, **kwargs) -> dict:
         """
         資産を生成しデータベースに登録
         :pram asset_type: 資産タイプ
@@ -53,15 +53,15 @@ class GameMaster:
         print(f"資産 '{name}' (ID: {asset_id}, クラス: {asset_type}) が登録されました。")
         return {"ID":asset_id, "instance":asset_instance}
     
-    def _construct_tangible(self, name, value, owner, useful_life, salvage_value):
+    def _construct_tangible(self, name, value, owner, useful_life, salvage_value) -> asset.Tangible:
         asset_instance = asset.Tangible(name, value, owner, useful_life, salvage_value)
         return asset_instance
     
-    def _construct_building(self, name, value, owner, address):
+    def _construct_building(self, name, value, owner, address) -> asset.Building:
         asset_instance = asset.Building(name, value, owner, address)
         return asset_instance
     
-    def _construct_inventory(self, name, valuation = "FIFO"):
+    def _construct_inventory(self, name, valuation = "FIFO") -> asset.Inventory:
         asset_instance = asset.Inventory(name, quantity=0, price=0, valuation = valuation)
         return asset_instance
     
@@ -162,14 +162,17 @@ class Player:
         if value <= 0 :
             raise ValueError("取得価額は0より大きくなければなりません")
     
-        
-        
-        self.portfolio.append({"name": target.name,
-                                "asset_type": target.__class__})
+        self.portfolio.append({"ID" : id,
+                               "name": target.name,
+                               "asset_type": target.__class__})
         self.ledger_manager.execute_transaction([
             ("建物", target.value),
             ("現金", -target.value)
         ], description=f"建物の取得　建物名：{target.name}")
+        
+    def perform_depreciation(building:asset.Building):
+        depreciation = building.apply_depreciation()
+        
     
     def redister_product(self, id, valuation="FIFO"):
         """商品の登録"""
@@ -177,7 +180,8 @@ class Player:
             product = self.game_master.get_asset_by_id(id)
         except IndexError as e:
             print("エラー(建物の取得)：{e}")
-        self.portfolio.append({"name": product.name, 
+        self.portfolio.append({"ID": id,
+                               "name": product.name, 
                                "asset_type" : product.__class__})
         print(f"[{self.name}]**商品が登録されました** 商品名：{product.name}")
         return product
@@ -235,31 +239,34 @@ def main():
     # サンプルコード
     game_master = GameMaster()
     player1 = Player("player1",game_master)
-    player2 = Player("player2",game_master)
-    
-    product_A = game_master.construct_instance("inventory","product_A")
-    product_A = player1.redister_product(name="Product_A")
-    
+    ledger1 = player1.ledger_manager
+        # (ゲームマスタ)アセットのコンストラクト
+    product_A = game_master.construct_instance("inventory","product_A").get("instance")
+    building_B = game_master.construct_instance("building", "building_B")
+    asset_list = list(game_master.asset_registry.keys())
+    product_A = product_A.get("instance")
+    building_B = building_B.get("instance")
+        # (プレイヤーA)の動き(商品売買)
+    player1.redister_product(asset_list[0])
+    player1.aquire_building(building_B)
+
     player1.purchase_product(product_A, 100, 150)
     player1.purchase_product(product_A, 200, 120, 15)
-    player1.sale_product(product_A, 80, 200)
+
+    player1.sale_product(product_A, 80)
+
     player1.purchase_product(product_A, 30, 160)
     player1.sale_product(product_A, 100, 225)
+
     player1.sale_product(product_A, 100, 210, 500)
-    
+
     player1.perform_inventory_audit(product_A, 5)
-    
-    ledger1 = player1.ledger_manager
-    
+
     end_1 = ledger1.execute_settlement()
-    
+
     ledger1.display_transaction_history()
     ledger1.display_trial_balance(end_1)
     ledger1.display_financial_statements(end_1)
-    
-    
-    
-    
 if __name__ == "__main__":
     main()
 
