@@ -21,7 +21,13 @@ class GameMaster:
         self.asset_registry = {}  # 全資産の管理
         
     def construct_instance(self, asset_type, name, *args, **kwargs):
-        """資産を生成しデータベースに登録"""
+        """
+        資産を生成しデータベースに登録
+        :pram asset_type: 資産タイプ
+            "inventory" :棚卸資産
+            "tangible"  :有形固定資産
+            "building"  :建物
+        """
         asset_id = str(uuid.uuid4())
 
         if asset_type == "building":
@@ -32,12 +38,11 @@ class GameMaster:
             raise ValueError(f"無効な資産タイプ: {asset_type}")
 
         self.asset_registry[asset_id] = asset_instance
-        print(f"資産 '{name}' (ID: {asset_id}) が登録されました。")
-        return asset_id, asset_instance
+        print(f"資産 '{name}' (ID: {asset_id}, クラス: {asset_type}) が登録されました。")
+        return {"ID":asset_id, "instance":asset_instance}
     
     def _construct_tangible(self, name, value, owner, useful_life, salvage_value):
         asset_instance = asset.Tangible(name, value, owner, useful_life, salvage_value)
-        
         return asset_instance
     
     def _construct_inventory(self, name, valuation = "FIFO"):
@@ -45,8 +50,6 @@ class GameMaster:
         
         return asset_instance
     
-    
-
     def get_asset_by_id(self, asset_id):
         """資産IDを基に資産情報を取得"""
         return self.asset_registry.get(asset_id, None)
@@ -172,8 +175,10 @@ class Player:
     def sale_product(self, product: asset.Inventory, 
                      quantity: int, sales_price = None, revert = 0):
         """商品の販売"""
-        if sales_price <= 0 :
-            print("警告：売価が0になっています") 
+        if sales_price:
+            print(f"売価が更新されました　更新後：{sales_price}")
+            if sales_price <= 0 :
+                print("警告：売価が0以下になっています") 
         product.subtract_inventory(quantity, sales_price)   
         sale_value = quantity * sales_price - revert 
         # 勘定元帳への記入
@@ -181,6 +186,8 @@ class Player:
             ("現金", sale_value),
             ("売上高", -sale_value)
         ],  description=f"商品の売上 商品名：{product.name} 個数：{quantity} 単価：{product.sales_price}")
+        
+        
     
     def perform_inventory_audit(self, product: asset.Inventory, loss=0):
         """棚卸調整と売上原価計算"""
@@ -205,6 +212,7 @@ def main():
     player1 = Player("player1",game_master)
     player2 = Player("player2",game_master)
     
+    product_A = game_master.construct_instance("inventory","product_A")
     product_A = player1.redister_product(name="Product_A")
     
     player1.purchase_product(product_A, 100, 150)
