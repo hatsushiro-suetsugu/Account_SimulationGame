@@ -49,6 +49,17 @@ class Tangible(Asset):
         if self.method not in self.METHODS :
             raise ValueError("無効な減価償却方法です")
 
+    def set_owner(self, owner_name: str):
+        """資産の所有者を設定"""
+        if self.owner:
+            raise ValueError(f"{self.name} はすでに所有者 {self.owner} が登録されています。")
+        self.owner = owner_name
+        print(f"{self.name} の所有者が {owner_name} に設定されました。")
+        
+    def get_owner(self):
+        """資産の所有者を取得"""
+        return self.owner
+    
     def apply_depreciation(self):
         """減価償却を適用：(帳簿価額-残存価額:デフォルトでゼロ)/耐用年数"""
         # 定額法

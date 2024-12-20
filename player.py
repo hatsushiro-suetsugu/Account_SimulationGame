@@ -49,11 +49,11 @@ class GameMaster:
                       "instance":asset_instance}
         return asset_info
     
-    def _construct_tangible(self, name, value, owner, useful_life, salvage_value) -> asset.Tangible:
+    def _construct_tangible(self, name, value, useful_life, salvage_value, owner=None) -> asset.Tangible:
         asset_instance = asset.Tangible(name, value, owner, useful_life, salvage_value)
         return asset_instance
     
-    def _construct_building(self, name, value, owner, address) -> asset.Building:
+    def _construct_building(self, name, value, address, owner=None) -> asset.Building:
         asset_instance = asset.Building(name, value, owner, address)
         return asset_instance
     
@@ -155,6 +155,12 @@ class Player:
         
         if value <= 0 :
             raise ValueError("取得価額は0より大きくなければなりません")
+        
+        # 所有者の登録
+        if target.owner is not None:
+            raise ValueError(f"この資産はすでに {target.owner} が所有しています。")
+        
+        target.set_owner(self.name)  # 所有者を登録
 
         asset_info = {"ID" : asset_id, "asset_type": target.__class__, "name": target.name}
         self.portfolio.append(asset_info)
