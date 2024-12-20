@@ -152,6 +152,10 @@ class Inventory(Asset):
                        f"在庫簿価 {self.value}")
         self._record_transaction(description)
     
+    def update_initial_value(self):
+        """期首簿価の更新(決算の実行時)"""
+        self.initial_value = self.value
+    
     def add_inventory(self, quantity: int, price: int, fringe_cost = 0):
         """棚卸資産の増加"""
         add_value = quantity * price + fringe_cost
@@ -283,9 +287,6 @@ class Inventory(Asset):
         
         return inventory_shortage, appraisal_loss, self.value, self.initial_value
     
-    def update_initial_value(self):
-        """期首簿価の更新(決算の実行時)"""
-        self.initial_value = self.value
     
 class Debt:
     # リスクフリーレートの設定(将来的にランダムに動くように関数化)
