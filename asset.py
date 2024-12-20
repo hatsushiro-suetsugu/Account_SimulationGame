@@ -102,8 +102,9 @@ class Inventory(Asset):
         (個別法は個別にインスタンスを作ればいいのでは？)
         """
         super().__init__(name, value = quantity*price)
-        self.quantity = quantity
-        self.price = price
+        self.quantity = quantity                                    # 現在の数量
+        self.initial_value = 0                                   # 期首の数量
+        self.price = price                                          # 購買単価
         self.sales_price = price                                    # 売価
         self.market_sales_price = self.sales_price                  # 正味売却単価(予定)
         self.market_sales_value = self.market_sales_price * price   # 正味売却価額(予定)
@@ -270,14 +271,21 @@ class Inventory(Asset):
         new_price = self.market_sales_price  # 市場価格を更新
         old_quantity = self.quantity
         new_quantity = old_quantity - loss
-
-        inventory_shortage = old_price * loss  # 棚卸減耗
-        appraisal_loss = max(0, (old_price - new_price) * new_quantity)  # 商品評価損
-
+        
+        # 棚卸減耗の計算, 現在数量の更新
+        inventory_shortage = old_price * loss 
         self.quantity = new_quantity
-        self.value = new_price * new_quantity  # 更新簿価
-
-        return inventory_shortage, appraisal_loss, self.value
+        
+        # 商品評価損の計算, 簿価の切下げ・更新(あれば)
+        if old_price > new_price:
+            appraisal_loss = max(0, (old_price - new_price) * new_quantity) 
+            self.value = new_price * new_quantity      
+        
+        return inventory_shortage, appraisal_loss, self.value, self.initial_value
+    
+    def update_initial_value(self):
+        """期首簿価の更新(決算の実行時)"""
+        self.initial_value = self.value
     
 class Debt:
     # リスクフリーレートの設定(将来的にランダムに動くように関数化)
