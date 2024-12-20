@@ -33,7 +33,7 @@ class Ledger:
         self._transactions = []  # 当期トランザクション履歴(期中)
         self._last_transactions = [] # 当期トランザクション履歴(期末)
         self._former_transactions = [] # 前期以前の全トランザクション履歴
-        self._initialize_essential_accounts(file_path="essential_account.json")
+        self._initialize_essential_accounts(file_path="database\essential_account.json")
 
     def _initialize_essential_accounts(self, file_path):
         """勘定科目の初期設定:essential_account.jsonで管理(12/17)"""
