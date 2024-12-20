@@ -1,5 +1,6 @@
+"""アセット関連の設定ファイル"""
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class Asset:
     def __init__(self, name, value):
@@ -88,9 +89,9 @@ class Building(Tangible):
         self.address = address
 
 class Machine(Tangible):
-    def __init__(self, name, value, owner, 
+    def __init__(self, name, value, owner, method, 
                  useful_life, salvage_value_ratio=0):
-        super().__init__(name, value, owner, useful_life, salvage_value_ratio)
+        super().__init__(name, value, owner, useful_life, salvage_value_ratio, method)
 
 class Inventory(Asset):
     VALUATIONS = ["FIFO", "GAM", "MAM"] # 先入先出法、総平均法、移動平均法
@@ -177,18 +178,18 @@ class Inventory(Asset):
     def subtract_inventory(self, quantity: int, sales_price = None):
         """棚卸資産の減少"""
         if self.valuation == "FIFO":
-            self._subtract_inventory_FIFO(quantity)
+            self._subtract_inventory_fifo(quantity)
         elif self.valuation == "MAM":
-            self._subtract_inventory_MAM(quantity)
+            self._subtract_inventory_mam(quantity)
         elif self.valuation == "GAM":
-            self._subtract_inventory_GAM(quantity)
+            self._subtract_inventory_gam(quantity)
             
         # 売価の更新
         if sales_price:
             self.update_sales_price(new_price=sales_price)
             self.update_market_sales_price() 
         
-    def _subtract_inventory_FIFO(self, quantity: int):
+    def _subtract_inventory_fifo(self, quantity: int):
         """FIFOによる棚卸資産の減少"""
         if quantity > self.quantity:
             raise ValueError("在庫不足です。指定された数量を引き出せません。")
@@ -224,7 +225,7 @@ class Inventory(Asset):
         self._record_transaction(description)
         # print(f"在庫が {quantity} 単位減少しました。総コスト: {total_cost}")
     
-    def _subtract_inventory_MAM(self, quantity):
+    def _subtract_inventory_mam(self, quantity):
         """MAMによる棚卸資産の減少"""
         if quantity > self.quantity:
             raise ValueError("在庫不足です。指定された数量を引き出せません。")
@@ -240,7 +241,7 @@ class Inventory(Asset):
         description = f"在庫が {quantity} 単位減少しました。平均単価: {average_price}, 総コスト: {total_cost}"
         self._record_transaction(description)
         
-    def _subtract_inventory_GAM(self, quantity: int):
+    def _subtract_inventory_gam(self, quantity: int):
         """
         GAMによる棚卸資産の減少
         todo:期末に単価を評価する方法を確立する
@@ -291,8 +292,8 @@ class Debt:
     def repay_debt(self, repay_value):
         self.value =- repay_value
         
-    def add_interest(self):
-        interest = (self.value * self.rate) * days / years
+    def add_interest(self, days):
+        interest = (self.value * self.rate) * days / 365
     
 def main():
     # FIFOのテスト

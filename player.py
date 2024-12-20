@@ -1,3 +1,6 @@
+"""
+プレイヤー＆ゲームマスタの記述
+"""
 from datetime import datetime, timedelta
 import uuid
 
@@ -69,8 +72,8 @@ class GameMaster:
     def display_assets(self):
         """全資産を表示"""
         print("\n=== 登録済み資産 ===")
-        for asset_id, asset in self.asset_registry.items():
-            print(f"ID: {asset_id}, 名前: {asset.name}, 市場価格: {asset.market_value}")
+        for asset_id, asset_obj in self.asset_registry.items():
+            print(f"ID: {asset_id}, 名前: {asset_obj.name}, 市場価格: {asset_obj.market_value}")
 
     def advance_time(self, days: int):
         """
@@ -118,8 +121,9 @@ class GameMaster:
 
 
 class Player:
+    """Playerクラス
+    """
     def __init__(self, name: chr, game_master: GameMaster, initial_cash=5000):
-        """Playerクラス"""
         self.name = name
         self.game_master = game_master
         self.ledger_manager = ledger.Ledger()
@@ -143,19 +147,19 @@ class Player:
         :param days: 時間経過の日数
         """
         for asset_info in self.portfolio:
-            asset = asset_info.get("instance")
+            asset_obj = asset_info.get("instance")
 
             # Tangible 資産の場合は減価償却を実行
-            if isinstance(asset, asset.Tangible):
-                depreciation = asset.apply_depreciation(days)
+            if isinstance(asset_obj, asset.Tangible):
+                depreciation = asset_obj.apply_depreciation(days)
                 self.ledger_manager.execute_transaction([
                     ("減価償却費", depreciation),
-                    ("減価償却累計額", depreciation)
-                ], description=f"{asset.name} の減価償却 ({days}日)")
+                    ("減価償却累計額", -depreciation)
+                ], description=f"{asset_obj.name} の減価償却 ({days}日)")
 
             # 他の資産タイプに対応したロジックを追加する場合はここに記述
 
-            print(f"{asset.name} の時間経過が処理されました ({days}日)。")
+            print(f"{asset_obj.name} の時間経過が処理されました ({days}日)。")
 
     def aquire_building(self, asset_id: chr, value: int):
         """建物の(登録＆)取得"""
@@ -228,7 +232,7 @@ class Player:
         print(f"建物 '{target_asset.name}' が売却されました。")
         
     
-    def redister_product(self, product_id:chr, valuation="FIFO") -> asset.Inventory:
+    def redister_product(self, product_id:chr) -> asset.Inventory:
         """商品の登録"""
         product = self.game_master.get_asset_by_id(product_id)
         
@@ -273,8 +277,6 @@ class Player:
             ("売上高", -sale_value)
         ],  description=f"商品の売上 商品名：{product.name} 個数：{quantity} 単価：{product.sales_price}")
         
-        
-    
     def perform_inventory_audit(self, product_id:chr, loss=0):
         """棚卸調整と売上原価計算"""
         product = self.game_master.get_asset_by_id(product_id) 
@@ -321,8 +323,8 @@ def main():
     # 資産の確認
     print("\n=== プレイヤーのポートフォリオ ===")
     for asset_info in player.portfolio:
-        asset = asset_info.get("instance")
-        print(f"資産名: {asset.name}, 帳簿価額: {int(asset.value)}, 累計減価償却額: {int(asset.accumulated_depreciation)}")
+        asset_obj = asset_info.get("instance")
+        print(f"資産名: {asset_obj.name}, 帳簿価額: {int(asset_obj.value)}, 累計減価償却額: {int(asset_obj.accumulated_depreciation)}")
 
     # 勘定元帳の記録を確認
     print("\n=== プレイヤーの勘定元帳 ===")
