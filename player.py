@@ -37,28 +37,25 @@ class GameMaster:
                 asset_instance = self._construct_tangible(name, *args, **kwargs)
             case "building":
                 asset_instance = self._construct_building(name, *args, **kwargs)
-            case "machine" :
-                pass
             case _:
                 raise ValueError(f"無効な資産タイプ: {asset_type}")                
 
         self.asset_registry[asset_id] = asset_instance
         print(f"資産 '{name}' (ID: {asset_id}, クラス: {asset_instance.__class__}) が登録されました。")
-        asset_info = {"ID":asset_id,
-                      "class":asset_instance.__class__,
-                      "instance":asset_instance}
+        asset_info = {"ID": asset_id, "class": asset_instance.__class__, "instance": asset_instance}
         return asset_info
     
-    def _construct_tangible(self, name, value, useful_life, salvage_value, owner=None) -> asset.Tangible:
-        asset_instance = asset.Tangible(name, value, owner, useful_life, salvage_value)
+    def _construct_tangible(self, name, value, useful_life, salvage_value_ratio, method, owner=None) -> asset.Tangible:
+        asset_instance = asset.Tangible(name, value, owner, useful_life, salvage_value_ratio, method)
         return asset_instance
     
     def _construct_building(self, name, value, address, owner=None) -> asset.Building:
         asset_instance = asset.Building(name, value, owner, address)
+        
         return asset_instance
     
-    def _construct_inventory(self, name, valuation = "FIFO") -> asset.Inventory:
-        asset_instance = asset.Inventory(name, quantity=0, price=0, valuation = valuation)
+    def _construct_inventory(self, name, valuation="FIFO") -> asset.Inventory:
+        asset_instance = asset.Inventory(name, quantity=0, price=0, valuation=valuation)
         return asset_instance
     
     def get_asset_by_id(self, asset_id) -> any:
@@ -75,71 +72,63 @@ class GameMaster:
         for asset_id, asset in self.asset_registry.items():
             print(f"ID: {asset_id}, 名前: {asset.name}, 市場価格: {asset.market_value}")
 
-    def advance_time(self, days=None, months=3, players=None):
+    def advance_time(self, days: int):
         """
-        ゲーム内時間を進める
-        :param days: 日単位で進める（オプション）
-        :param months: 月単位で進める（デフォルト: 3か月）
-        :param players: プレイヤーリスト
+        ゲーム全体の時間を進め、各プレイヤーや資産の状態を更新。
+
+        :param days: 進める日数
         """
-        if days:
-            self.current_date += timedelta(days=days)
-        elif months:
-            self.current_date += timedelta(days=30 * months)  # 月を30日と仮定して進行
+        # 時間を進める
+        self.current_date += timedelta(days=days)
 
-        print(f"ゲーム内時間が {self.current_date.strftime('%Y-%m-%d')} に進みました。")
+        # イベントログに記録
+        self.log_event({
+            "date": self.get_current_date(),
+            "event": f"{days}日進行",
+            "details": {}
+        })
 
-        # 各プレイヤーの処理を実行
-        if players:
-            for player in players:
-                self._process_player_ledger(player)
+        # 各プレイヤーの時間経過処理を呼び出す
+        for player in self.players:
+            player.process_time(days)
 
-    def _process_player_ledger(self, player):
-        """各プレイヤーのLedger処理"""
-        print(f"プレイヤー {player.name} のトランザクションを処理中...")
+        # 各資産の時間経過処理
+        for asset_id, asset_instance in self.asset_registry.items():
+            if hasattr(asset_instance, "update_with_time"):
+                asset_instance.update_with_time(days)
 
-        # 減価償却例 (固定資産の計算とLedgerへの記録)
-        total_depreciation = 0
-        for asset in player.tangible_asset_manager.assets:
-            if isinstance(asset, asset.TangibleAsset) and asset.disposal_date is None:
-                depreciation = asset.apply_depreciation()
-                total_depreciation += depreciation
-
-        if total_depreciation > 0:
-            player.ledger_manager.execute_transaction([
-                ("減価償却費", total_depreciation),
-                ("減価償却累計額", -total_depreciation)
-            ], description="Periodic depreciation")
-
-        # 必要なら追加処理（例：収益、費用、資産の更新）
-
-    def get_current_date(self):
-        """現在のゲーム内日時を取得"""
-        return self.current_date.strftime("%Y-%m-%d")
+        print(f"{days}日間時間が進行しました。現在日時: {self.current_date.strftime('%Y-%m-%d')}")
 
     def log_event(self, event):
-        """ゲームイベントを記録"""
-        self.event_log.append({"date": self.get_current_date(), "event": event})
-        print(f"[{self.get_current_date()}] イベント記録: {event}")
+        """
+        ゲーム内イベントを記録
+        
+        :param event: 記録するイベントデータ
+        """
+        self.event_log.append(event)
+        print(f"イベント記録: {event}")
 
-    def display_event_log(self):
-        """イベントログを表示"""
-        print("\n--- ゲームイベントログ ---")
-        for log in self.event_log:
-            print(f"[{log['date']}] {log['event']}")
+    def get_current_date(self):
+        """
+        現在のゲーム内日時を取得
+        
+        :return: 現在のゲーム内日時 (文字列)
+        """
+        return self.current_date.strftime("%Y-%m-%d")
+
 
 class Player:
-    def __init__(self, name :chr, game_master: GameMaster, initial_cash=5000):
-        """"Playerクラス"""
+    def __init__(self, name: chr, game_master: GameMaster, initial_cash=5000):
+        """Playerクラス"""
         self.name = name
         self.game_master = game_master
         self.ledger_manager = ledger.Ledger()
         # 各マネージャーオブジェクトの設定
         
         # Playerの保持するアセット情報
-        self.portfolio = []    # e.g. list({"name": name, "class": asset.Inventory, "asset": product})
+        self.portfolio = []  # e.g. list({"ID": id, "instance": asset_instance})
         self.product_lists = []
-        self.ends = [] #決算情報
+        self.ends = []  # 決算情報
 
         # 初期現金の設定
         self.ledger_manager.execute_transaction([
@@ -147,40 +136,47 @@ class Player:
             ("資本金", -initial_cash)
         ], description="Initial capital")
 
-    """プレイメソッド(Managerを介さず直接行う場合)"""
+    def process_time(self, days: int):
+        """
+        プレイヤーが管理する資産の時間経過を処理
 
-    def aquire_building(self, asset_id : chr, value: int):
+        :param days: 時間経過の日数
+        """
+        for asset_info in self.portfolio:
+            asset = asset_info.get("instance")
+
+            # Tangible 資産の場合は減価償却を実行
+            if isinstance(asset, asset.Tangible):
+                depreciation = asset.apply_depreciation(days)
+                self.ledger_manager.execute_transaction([
+                    ("減価償却費", depreciation),
+                    ("減価償却累計額", depreciation)
+                ], description=f"{asset.name} の減価償却 ({days}日)")
+
+            # 他の資産タイプに対応したロジックを追加する場合はここに記述
+
+            print(f"{asset.name} の時間経過が処理されました ({days}日)。")
+
+    def aquire_building(self, asset_id: chr, value: int):
         """建物の(登録＆)取得"""
         target = self.game_master.get_asset_by_id(asset_id)
-        
-        if value <= 0 :
-            raise ValueError("取得価額は0より大きくなければなりません")
-        
-        # 所有者の登録
-        if target.owner is not None:
-            raise ValueError(f"この資産はすでに {target.owner} が所有しています。")
-        
-        target.set_owner(self.name)  # 所有者を登録
 
-        asset_info = {"ID" : asset_id, "asset_type": target.__class__, "name": target.name}
+        if value <= 0:
+            raise ValueError("取得価額は0より大きくなければなりません")
+
+        # 所有者の登録
+        target.set_owner(self.name)
+
+        asset_info = {"ID": asset_id, "instance": target}
         self.portfolio.append(asset_info)
-        
+
         self.ledger_manager.execute_transaction([
             ("建物", target.value),
             ("現金", -target.value)
         ], description=f"建物の取得　建物名：{target.name}")
         
-    def perform_depreciation(self):
-        """減価償却の実行"""
-        for asset_id, asset_type, name in self.portfolio:
-            if asset_type == asset.Tangible:
-                building = self.game_master.get_asset_by_id(asset_id)
-                depreciation = building.apply_depreciation()
-                self.ledger_manager.execute_transaction([
-                    ("減価償却費", depreciation),
-                    ("減価償却累計額", depreciation)
-                ], description= f"{asset.name}の減価償却の実行")
-    
+        print(f"Building instance type: {type(target)}")
+
     def dispose_building(self, asset_id: str, sales_price: int = None):
         """
         プレイヤーが所有する建物を売却または除却する。
@@ -190,13 +186,13 @@ class Player:
         """
         # 対象資産を取得
         asset_info = next((item for item in self.portfolio if item["ID"] == asset_id), None)
-        
+
         if not asset_info:
             raise ValueError(f"指定された資産ID({asset_id})はポートフォリオに存在しません。")
 
         # 資産インスタンスを取得
-        target_asset = self.game_master.get_asset_by_id(asset_id)["instance"]
-        
+        target_asset = asset_info.get("instance")
+
         if not isinstance(target_asset, asset.Building):
             raise ValueError("指定された資産は建物ではありません。")
 
@@ -208,7 +204,7 @@ class Player:
         book_value = target_asset.value
         accumulated_depreciation = target_asset.accumulated_depreciation
         net_book_value = book_value - accumulated_depreciation
-        
+
         if sales_price >= net_book_value:
             gain = sales_price - net_book_value
             self.ledger_manager.execute_transaction([
@@ -230,7 +226,6 @@ class Player:
         self.portfolio = [item for item in self.portfolio if item["ID"] != asset_id]
 
         print(f"建物 '{target_asset.name}' が売却されました。")
-
         
     
     def redister_product(self, product_id:chr, valuation="FIFO") -> asset.Inventory:
@@ -301,40 +296,37 @@ class Player:
         self.product_lists = []
         
 def main():
-    # サンプルコード
+    # ゲームマスターを初期化
     game_master = GameMaster()
-    player1 = Player("player1",game_master)
-    ledger1 = player1.ledger_manager
-        # (ゲームマスタ)アセットのコンストラクト
-    product_A = game_master.construct_instance("inventory","product_A").get("instance")
-    building_B = game_master.construct_instance("building", "building_B")
-    asset_list = list(game_master.asset_registry.keys())
-    product_A = product_A.get("instance")
-    building_B = building_B.get("instance")
-        # (プレイヤーA)の動き(商品売買)
-    player1.redister_product(asset_list[0])
-    player1.aquire_building(building_B)
 
-    player1.purchase_product(product_A, 100, 150)
-    player1.purchase_product(product_A, 200, 120, 15)
+    # プレイヤーを作成して登録
+    player = Player(name="Player1", game_master=game_master)
+    game_master.players.append(player)
 
-    player1.sale_product(product_A, 80)
+    # 資産の生成と登録
+    building_asset = game_master.construct_instance(
+        asset_type="building",
+        name="Office Building",
+        value=1000000,
+        address="Downtown City"
+    )
 
-    player1.purchase_product(product_A, 30, 160)
-    player1.sale_product(product_A, 100, 225)
+    # プレイヤーに建物資産を取得させる
+    player.aquire_building(asset_id=building_asset["ID"], value=1000000)
 
-    player1.sale_product(product_A, 100, 210, 500)
+    # ゲーム内時間を進める
+    print("\n=== 90日進行 ===")
+    game_master.advance_time(days=90)
 
-    player1.perform_inventory_audit(product_A, 5)
+    # 資産の確認
+    print("\n=== プレイヤーのポートフォリオ ===")
+    for asset_info in player.portfolio:
+        asset = asset_info.get("instance")
+        print(f"資産名: {asset.name}, 帳簿価額: {int(asset.value)}, 累計減価償却額: {int(asset.accumulated_depreciation)}")
 
-    end_1 = ledger1.execute_settlement()
+    # 勘定元帳の記録を確認
+    print("\n=== プレイヤーの勘定元帳 ===")
+    player.ledger_manager.display_transaction_history()
 
-    ledger1.display_transaction_history()
-    ledger1.display_trial_balance(end_1)
-    ledger1.display_financial_statements(end_1)
 if __name__ == "__main__":
     main()
-
-
-
-

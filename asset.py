@@ -60,21 +60,29 @@ class Tangible(Asset):
         """資産の所有者を取得"""
         return self.owner
     
-    def apply_depreciation(self):
-        """減価償却を適用：(帳簿価額-残存価額:デフォルトでゼロ)/耐用年数"""
-        # 定額法
-        if self.method == "straighr_line":
-            depreciation = self.value - self.salvage_value / self.useful_life
-            self.accumulated_depreciation += depreciation
-            self.value = max(self.salvage_value, self.value - depreciation)
-            return depreciation
-        # 定率法
+    def apply_depreciation(self, days: int = 365):
+        """
+        減価償却を適用。指定された日数に基づいて減価償却額を計算。
+
+        :param days: 時間経過の日数（デフォルトは1年=365日）
+        :return: 減価償却額
+        """
+        if self.method == "straight_line":
+            depreciation_per_day = (self.value - self.salvage_value) / (self.useful_life * 365)
         elif self.method == "accelarated":
-            pass
+            depreciation_per_day = ((self.value - self.accumulated_depreciation) * 2) / (self.useful_life * 365)
+        else:
+            raise ValueError("無効な減価償却方法です")
+
+        total_depreciation = int(depreciation_per_day * days)
+        self.accumulated_depreciation += total_depreciation
+        self.value = max(self.salvage_value, self.value - total_depreciation)
+        print(f"{self.name} の減価償却が適用されました: {total_depreciation} 減価償却累計額: {self.accumulated_depreciation} 残存価額: {self.value}")
+        return total_depreciation
 
 class Building(Tangible):
     def __init__(self, name, value, owner, address, 
-                 useful_life=40, salvage_value_ratio=0, method="straght_line"):
+                 useful_life=40, salvage_value_ratio=0, method="straight_line"):
         super().__init__(name, value, owner, 
                          useful_life, salvage_value_ratio, method)
         self.address = address
