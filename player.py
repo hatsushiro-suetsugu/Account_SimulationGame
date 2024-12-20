@@ -175,8 +175,56 @@ class Player:
                     ("減価償却累計額", depreciation)
                 ], description= f"{asset.name}の減価償却の実行")
     
-    def dispose_building():
-        pass
+    def dispose_building(self, asset_id: str, sales_price: int = None):
+        """
+        プレイヤーが所有する建物を売却または除却する。
+        
+        :param asset_id: 売却対象の資産ID
+        :param sales_price: 売却価額 (デフォルトは建物の市場価値)
+        """
+        # 対象資産を取得
+        asset_info = next((item for item in self.portfolio if item["ID"] == asset_id), None)
+        
+        if not asset_info:
+            raise ValueError(f"指定された資産ID({asset_id})はポートフォリオに存在しません。")
+
+        # 資産インスタンスを取得
+        target_asset = self.game_master.get_asset_by_id(asset_id)["instance"]
+        
+        if not isinstance(target_asset, asset.Building):
+            raise ValueError("指定された資産は建物ではありません。")
+
+        # 売却価額の設定 (デフォルトは市場価値)
+        if sales_price is None:
+            sales_price = target_asset.market_value
+
+        # 簿価と売却損益の計算
+        book_value = target_asset.value
+        accumulated_depreciation = target_asset.accumulated_depreciation
+        net_book_value = book_value - accumulated_depreciation
+        
+        if sales_price >= net_book_value:
+            gain = sales_price - net_book_value
+            self.ledger_manager.execute_transaction([
+                ("現金", sales_price),
+                ("建物", -book_value),
+                ("減価償却累計額", accumulated_depreciation),
+                ("固定資産売却益", -gain)
+            ], description=f"建物の売却: {target_asset.name}")
+        else:
+            loss = net_book_value - sales_price
+            self.ledger_manager.execute_transaction([
+                ("現金", sales_price),
+                ("建物", -book_value),
+                ("減価償却累計額", accumulated_depreciation),
+                ("固定資産売却損", loss)
+            ], description=f"建物の売却: {target_asset.name}")
+
+        # ポートフォリオから削除
+        self.portfolio = [item for item in self.portfolio if item["ID"] != asset_id]
+
+        print(f"建物 '{target_asset.name}' が売却されました。")
+
         
     
     def redister_product(self, product_id:chr, valuation="FIFO") -> asset.Inventory:
