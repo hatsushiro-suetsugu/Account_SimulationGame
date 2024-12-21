@@ -118,15 +118,6 @@ class Ledger:
             
         return summary
     
-    # def _execute_depreciation(self, tangible_assets:list):
-    #     """(決算整理)減価償却の実行"""
-    #     for asset in tangible_assets:
-    #         depreciation = asset.apply_depreciation()
-    #         self.execute_transaction([
-    #             ("減価償却費", depreciation),
-    #             ("減価償却累計額", depreciation)
-    #         ], description= f"{asset.name}の減価償却の実行")
-    
     def _get_trial_balance(self) -> dict:
         """残高試算表の作成"""
         summary = {}
@@ -154,9 +145,9 @@ class Ledger:
         print("\n\n残高試算表:\n")
         for name, balance in summary.items():
             if balance > 0:
-                print(f"{name}: {balance}")
+                print(f"{name}: {balance:,}")
             elif balance < 0:
-                print(f"{name}: ({-balance})")
+                print(f"{name}: ({-balance:,})")
             else:
                 print(f"{name}: 0")
             
@@ -204,9 +195,9 @@ class Ledger:
                 print(f"  {sub_category}:")
                 for name, balance in accounts.items():
                     if balance > 0:
-                        print(f"        {name}: {balance}")
+                        print(f"        {name}: {balance:,}")
                     elif balance < 0:
-                        print(f"        {name}: ({-balance})")
+                        print(f"        {name}: ({-balance:,})")
                     else:
                         pass
 
@@ -218,9 +209,9 @@ class Ledger:
                 print(f"  {sub_category}:")
                 for name, balance in accounts.items():
                     if balance > 0:
-                        print(f"        {name}: {balance}")
+                        print(f"        {name}: {balance:,}")
                     elif balance < 0:
-                        print(f"        {name}: ({-balance})")
+                        print(f"        {name}: ({-balance:,})")
                     else:
                         pass
         # 当期純利益の表示
@@ -238,15 +229,15 @@ class Ledger:
         ]
         
     def display_transaction_history(self):
-            """全トランザクション履歴(総勘定元帳)を表示"""
-            print("\n\n取引一覧:\n")
-            for tx in self._get_transaction_history():
-                timestamp = tx["timestamp"]
-                updates_str = ", ".join([f"{name}: {amount}" for name, amount in tx["updates"]])
-                description = tx["description"] if tx["description"] else "No description"
-                print(f"  [{timestamp}]")
-                print(f"    仕訳: {updates_str}")
-                print(f"    摘要: {description}")
+        """全トランザクション履歴(総勘定元帳)を表示"""
+        print("\n\n取引一覧:\n")
+        for tx in self._get_transaction_history():
+            timestamp = tx["timestamp"]
+            updates_str = ", ".join([f"{name}: {amount:,}" for name, amount in tx["updates"]])
+            description = tx["description"] if tx["description"] else "No description"
+            print(f"  [{timestamp}]")
+            print(f"    仕訳: {updates_str}")
+            print(f"    摘要: {description}")
 
 def main():
     # サンプルコード
@@ -298,7 +289,7 @@ def main():
     ledger.display_transaction_history()
     
     # 残高試算表の表示
-    ledger.display_trial_balance()
+    ledger.display_trial_balance(end_1)
         
     # 財務諸表を表示
     ledger.display_financial_statements(end_1)
@@ -338,7 +329,7 @@ def main():
     ledger.display_transaction_history()
     
     # 残高試算表の表示
-    ledger.display_trial_balance()
+    ledger.display_trial_balance(end_2)
         
     # 財務諸表を表示
     ledger.display_financial_statements(end_2)
