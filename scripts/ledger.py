@@ -1,10 +1,11 @@
-from datetime import datetime
+"""会計帳簿システム"""
 import json
 
 class Account:
     VALID_CATEGORIES = ["資産", "負債", "純資産", "収益", "費用"]
 
-    def __init__(self, name, statement=None, category=None, sub_category=None):
+    def __init__(self, name, 
+                 statement=None, category=None, sub_category=None):
         """会計勘定クラス"""
         if category not in self.VALID_CATEGORIES:
             raise ValueError(f"無効なカテゴリー: {category}. 有効なカテゴリーは {', '.join(self.VALID_CATEGORIES)} です。")
@@ -27,8 +28,9 @@ class Account:
         self.balance = 0
 
 class Ledger:
-    def __init__(self) -> dict:
+    def __init__(self, current_date = "ゲーム内時間") -> dict:
         """勘定元帳クラス"""
+        self.current_date = current_date
         self._accounts = {}
         self._transactions = []  # 当期トランザクション履歴(期中)
         self._last_transactions = [] # 当期トランザクション履歴(期末)
@@ -71,7 +73,7 @@ class Ledger:
         for account in self._accounts.values():
             self._update_account(account.name, 0)
 
-    def execute_transaction(self, updates, timestamp = "ゲーム内時間", description=""):
+    def execute_transaction(self, updates, description=""):
         """取引を実行し、制約を確認"""
         if not isinstance(updates, list) or len(updates) < 2:
             raise ValueError(f"取引には2つ以上の更新が必要です。{updates}")
@@ -88,7 +90,7 @@ class Ledger:
         transaction = {
             "updates": updates,
             "description": description,
-            "timestamp": timestamp  # ゲーム上の時間を仮定
+            "timestamp": self.current_date  # ゲーム上の時間を仮定
         }
         self._transactions.append(transaction)
 
@@ -104,8 +106,8 @@ class Ledger:
 
         # 当期純利益を計算
         net_income = total_revenue + total_expense  # 費用は正値なので足す
-        if net_income != 0:
-            self._update_account("利益剰余金", net_income)
+        
+        self._update_account("利益剰余金", net_income)
         summary["当期純利益"] = -net_income
         
         # 帳簿の閉鎖 -> PLの初期化
@@ -113,7 +115,7 @@ class Ledger:
             if account.statement == "損益計算書":
                 self._clear_account(account.name)  
             else:
-                continue  
+                continue
         # self._clear_transactions()
             
         return summary

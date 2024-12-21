@@ -126,8 +126,9 @@ class Player:
     def __init__(self, name: chr, game_master: GameMaster, initial_cash=5000):
         self.name = name
         self.game_master = game_master
-        self.ledger_manager = ledger.Ledger()
+        self.ledger_manager = ledger.Ledger(current_date=game_master.current_date)
         # 各マネージャーオブジェクトの設定
+        self.tangible_manager = manager.BuildingManager(game_master, self)
         
         # Playerの保持するアセット情報
         self.portfolio = []  # e.g. list({"ID": id, "instance": asset_instance})
@@ -138,7 +139,7 @@ class Player:
         self.ledger_manager.execute_transaction([
             ("現金", initial_cash),
             ("資本金", -initial_cash)
-        ], description="Initial capital")
+        ], description=f"会社設立 資本金: {initial_cash:,}")
 
     def process_time(self, days: int):
         """
@@ -147,7 +148,8 @@ class Player:
         :param days: 時間経過の日数
         """
         for asset_info in self.portfolio:
-            asset_obj : asset.Tangible = asset_info.get("instance")
+            asset_obj : asset.Asset = asset_info.get("instance")
+            asset_id : chr = asset_info.get("ID")
 
             # Tangible 資産の場合は減価償却を実行
             if isinstance(asset_obj, asset.Tangible):
@@ -158,8 +160,14 @@ class Player:
                 ], description=f"{asset_obj.name} の減価償却 ({days}日)")
 
             # 他の資産タイプに対応したロジックを追加する場合はここに記述
+            if isinstance(asset_obj, asset.Inventory):
+                self.perform_inventory_audit(product_id=asset_id)
+                
+        # ledger の〆切
+        end = self.ledger_manager.execute_settlement()
+        self.ends.append(end)
 
-            print(f"{asset_obj.name} の時間経過が処理されました ({days}日)。")
+        print(f"[{self.name}]時間経過が処理されました ({days}日)。")
 
     def aquire_building(self, asset_id: chr, value: int):
         """建物の(登録＆)取得"""
@@ -243,7 +251,7 @@ class Player:
         return product
             
     def purchase_product(self, product_id:chr,
-                         quantity: int, price: int, fringe_cost = 0):
+                         quantity:int, price:int, fringe_cost:int = 0):
         """商品の購入"""
         if price < 0 :
             raise ValueError("取得価額は0以上でなければなりません")
@@ -259,7 +267,7 @@ class Player:
         ], description=f"商品の仕入れ　商品名：{product.name} 個数：{quantity} 単価：{price}")
         
     def sale_product(self, product_id:chr, 
-                     quantity: int, sales_price = None, revert = 0):
+                     quantity:int, sales_price:int = None, revert:int = 0):
         """商品の販売"""
         product : asset.Inventory = self.game_master.get_asset_by_id(product_id) 
         if sales_price:
@@ -277,7 +285,7 @@ class Player:
             ("売上高", -sale_value)
         ],  description=f"商品の売上 商品名：{product.name} 個数：{quantity} 単価：{product.sales_price}")
         
-    def perform_inventory_audit(self, product_id:chr, loss=0):
+    def perform_inventory_audit(self, product_id:chr, loss:int=0):
         """棚卸調整と売上原価計算"""
         product : asset.Inventory = self.game_master.get_asset_by_id(product_id)  
         inventory_shortage, appraisal_loss, new_value, initial_value = product.perform_inventory_adjustment(loss)
