@@ -128,7 +128,9 @@ class Player:
         self.game_master = game_master
         self.ledger_manager = ledger.Ledger(current_date=game_master.current_date)
         # 各マネージャーオブジェクトの設定
-        self.tangible_manager = manager.BuildingManager(game_master, self)
+        self.building_manager = manager.BuildingManager(game_master, self)
+        self.purchase_manager = manager.PurchaseManager(game_master,self)
+        self.sales_manager = manager.SalesManager(game_master, self)
         
         # Playerの保持するアセット情報
         self.portfolio = []  # e.g. list({"ID": id, "instance": asset_instance})
