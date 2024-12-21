@@ -281,9 +281,7 @@ class Inventory(Asset):
         self.quantity = new_quantity
         
         # 商品評価損の計算, 簿価の切下げ・更新(あれば)
-        if old_price > new_price:
-            appraisal_loss = max(0, (old_price - new_price) * new_quantity) 
-            self.value = new_price * new_quantity      
+        appraisal_loss = max(0, (old_price - new_price) * new_quantity)     
         
         return inventory_shortage, appraisal_loss, self.value, self.initial_value
     
