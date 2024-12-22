@@ -4,9 +4,9 @@
 from datetime import datetime, timedelta
 import uuid
 
-import asset
-import ledger
-import manager
+import scripts.asset as asset
+import scripts.ledger as ledger
+import scripts.manager as manager
 
 
 class GameMaster:
@@ -126,8 +126,11 @@ class Player:
     def __init__(self, name: chr, game_master: GameMaster, initial_cash=5000):
         self.name = name
         self.game_master = game_master
-        self.ledger_manager = ledger.Ledger()
+        self.ledger_manager = ledger.Ledger(current_date=game_master.current_date)
         # 各マネージャーオブジェクトの設定
+        self.building_manager = manager.BuildingManager(game_master, self)
+        self.purchase_manager = manager.PurchaseManager(game_master,self)
+        self.sales_manager = manager.SalesManager(game_master, self)
         
         # Playerの保持するアセット情報
         self.portfolio = []  # e.g. list({"ID": id, "instance": asset_instance})
@@ -138,7 +141,7 @@ class Player:
         self.ledger_manager.execute_transaction([
             ("現金", initial_cash),
             ("資本金", -initial_cash)
-        ], description="Initial capital")
+        ], description=f"会社設立 資本金: {initial_cash:,}")
 
     def process_time(self, days: int):
         """
@@ -147,7 +150,8 @@ class Player:
         :param days: 時間経過の日数
         """
         for asset_info in self.portfolio:
-            asset_obj = asset_info.get("instance")
+            asset_obj : asset.Asset = asset_info.get("instance")
+            asset_id : chr = asset_info.get("ID")
 
             # Tangible 資産の場合は減価償却を実行
             if isinstance(asset_obj, asset.Tangible):
@@ -158,12 +162,18 @@ class Player:
                 ], description=f"{asset_obj.name} の減価償却 ({days}日)")
 
             # 他の資産タイプに対応したロジックを追加する場合はここに記述
+            if isinstance(asset_obj, asset.Inventory):
+                self.perform_inventory_audit(product_id=asset_id)
+                
+        # ledger の〆切
+        end = self.ledger_manager.execute_settlement()
+        self.ends.append(end)
 
-            print(f"{asset_obj.name} の時間経過が処理されました ({days}日)。")
+        print(f"[{self.name}]時間経過が処理されました ({days}日)。")
 
     def aquire_building(self, asset_id: chr, value: int):
         """建物の(登録＆)取得"""
-        target = self.game_master.get_asset_by_id(asset_id)
+        target : asset.Building = self.game_master.get_asset_by_id(asset_id)
 
         if value <= 0:
             raise ValueError("取得価額は0より大きくなければなりません")
@@ -195,7 +205,7 @@ class Player:
             raise ValueError(f"指定された資産ID({asset_id})はポートフォリオに存在しません。")
 
         # 資産インスタンスを取得
-        target_asset = asset_info.get("instance")
+        target_asset : asset.Building = asset_info.get("instance")
 
         if not isinstance(target_asset, asset.Building):
             raise ValueError("指定された資産は建物ではありません。")
@@ -234,7 +244,7 @@ class Player:
     
     def redister_product(self, product_id:chr) -> asset.Inventory:
         """商品の登録"""
-        product = self.game_master.get_asset_by_id(product_id)
+        product : asset.Inventory = self.game_master.get_asset_by_id(product_id)
         
         asset_info = {"ID" : product_id, "asset_type": product.__class__, "name": product.name}
         self.portfolio.append(asset_info)
@@ -243,11 +253,11 @@ class Player:
         return product
             
     def purchase_product(self, product_id:chr,
-                         quantity: int, price: int, fringe_cost = 0):
+                         quantity:int, price:int, fringe_cost:int = 0):
         """商品の購入"""
         if price < 0 :
             raise ValueError("取得価額は0以上でなければなりません")
-        product = self.game_master.get_asset_by_id(product_id)
+        product : asset.Inventory = self.game_master.get_asset_by_id(product_id)
         
         product.add_inventory(quantity, price, fringe_cost)
         purchase_cost = quantity * price + fringe_cost
@@ -259,9 +269,9 @@ class Player:
         ], description=f"商品の仕入れ　商品名：{product.name} 個数：{quantity} 単価：{price}")
         
     def sale_product(self, product_id:chr, 
-                     quantity: int, sales_price = None, revert = 0):
+                     quantity:int, sales_price:int = None, revert:int = 0):
         """商品の販売"""
-        product = self.game_master.get_asset_by_id(product_id) 
+        product : asset.Inventory = self.game_master.get_asset_by_id(product_id) 
         if sales_price:
             print(f"[{self.name},{product.name}]**売価が更新されました**　更新後：{sales_price}")
             if sales_price <= 0 :
@@ -277,16 +287,16 @@ class Player:
             ("売上高", -sale_value)
         ],  description=f"商品の売上 商品名：{product.name} 個数：{quantity} 単価：{product.sales_price}")
         
-    def perform_inventory_audit(self, product_id:chr, loss=0):
+    def perform_inventory_audit(self, product_id:chr, loss:int=0):
         """棚卸調整と売上原価計算"""
-        product = self.game_master.get_asset_by_id(product_id) 
-        inventory_shortage, appraisal_loss, new_value = product.perform_inventory_adjustment(loss)
+        product : asset.Inventory = self.game_master.get_asset_by_id(product_id)  
+        inventory_shortage, appraisal_loss, new_value, initial_value = product.perform_inventory_adjustment(loss)
 
         # 売上原価計算
         total_purchase = sum(item["quantity"] for item in self.product_lists if item["name"] == product.name)
-        cost_of_sales = total_purchase - new_value - inventory_shortage - appraisal_loss
+        cost_of_sales = initial_value + total_purchase - new_value - inventory_shortage - appraisal_loss
 
-        # 勘定元帳への記録
+        # 勘定元帳への記録・決算作業の実行
         self.ledger_manager.execute_transaction([
             ("売上原価", cost_of_sales),
             ("仕入", -total_purchase),
@@ -295,7 +305,7 @@ class Player:
             ("棚卸資産", new_value)
         ], description=f"棚卸調整 商品: {product.name}")
         
-        self.product_lists = []
+        product.update_initial_value()
         
 def main():
     # ゲームマスターを初期化
