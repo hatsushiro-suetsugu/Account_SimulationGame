@@ -4,9 +4,12 @@
 from datetime import datetime, timedelta
 import uuid
 
-import scripts.asset as asset
-import scripts.ledger as ledger
-import scripts.manager as manager
+from scripts import (
+    asset,
+    ledger,
+    manager
+    )
+
 
 
 class GameMaster:

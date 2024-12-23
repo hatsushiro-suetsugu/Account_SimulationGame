@@ -1,5 +1,8 @@
-import scripts.asset as asset
-import scripts.player as player
+"""プレイヤーの各種管理クラスの記述"""
+from scripts import (
+    asset, 
+    player
+    )
 
 class Manager:
     """一般マネージャークラス"""
