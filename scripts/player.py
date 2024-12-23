@@ -30,9 +30,20 @@ class GameMaster:
         """
         資産を生成しデータベースに登録
         :pram asset_type: 資産タイプ
-            "inventory" :棚卸資産
-            "tangible"  :有形固定資産
-            "building"  :建物
+                "inventory":    棚卸資産
+                    :param  name:   名前
+                "tangible":     有形固定資産
+                    :param  name:                   名前
+                            value:                  取得価額
+                            useful_liffe:           耐用年数
+                            salvage_value_ratio:    残存価額比率
+                            method:                 減価償却方法
+                            
+                    
+                "building":     建物
+                    :param  name:   名前
+                            value:  取得価額
+                            address:住所
         """
         asset_id = str(uuid.uuid4())
         
