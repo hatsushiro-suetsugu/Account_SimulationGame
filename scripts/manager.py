@@ -34,8 +34,8 @@ class SalesManager(Manager):
     
 
 class PurchaseManager(Manager):
+    """購買部門"""
     def __init__(self, game_master, owner_player):
-        """購買部門"""
         super().__init__(game_master, owner_player)
         
     def purchase_product(self, product_id:chr,
@@ -59,7 +59,6 @@ class PurchaseManager(Manager):
 class BuildingManager(Manager):
     """建物管理マネージャー"""
     def __init__(self, game_master, owner_player):
-        """資産管理部門"""
         super().__init__(game_master, owner_player)
 
     def aquire_building(self, asset_id: chr, value: int):
