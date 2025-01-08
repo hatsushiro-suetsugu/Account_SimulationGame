@@ -1,77 +1,125 @@
 """会計帳簿システム"""
 import json
+import openpyxl
+import pandas as pd
+import os
+from datetime import datetime
 
-class Account:
-    VALID_CATEGORIES = ["資産", "負債", "純資産", "収益", "費用"]
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
 
-    def __init__(self, name, 
-                 statement=None, category=None, sub_category=None):
-        """会計勘定クラス"""
-        if category not in self.VALID_CATEGORIES:
-            raise ValueError(f"無効なカテゴリー: {category}. 有効なカテゴリーは {', '.join(self.VALID_CATEGORIES)} です。")
-        self.name = name
-        self.statement = statement # 貸借対照表, 損益計算書, 株主資本等変動計算書(予定), キャッシュフロー計算書(予定)
-        self.category = category  # 資産, 負債, 純資産, 収益, 費用
-        self.sub_category = sub_category # (BS)流動/固定、(PL)営業/営業外
-        self.balance = 0  # 純額
+Base = declarative_base()
 
+class Account(Base):
+    """勘定科目テーブル"""
+    __tablename__ = "accounts"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False, unique=True)
+    statement = Column(String(255), nullable=False)
+    category = Column(String(255), nullable=False)
+    sub_category = Column(String(255))
+    balance = Column(Integer, default=0)
+    
     def update(self, amount):
-        """金額を更新 (正: 借方, 負: 貸方)"""
+        """勘定の更新"""
         self.balance += amount
 
-    def net_balance(self):
-        """純額を返す"""
-        return self.balance
-    
     def clear(self):
-        """金額をリセット"""
+        """勘定の残高を0にリセット"""
         self.balance = 0
 
+class Transaction(Base):
+    """取引テーブル"""
+    __tablename__ = "transactions"
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, nullable=False)
+    description = Column(String)
+    updates = relationship("TransactionUpdate", back_populates="transaction")
+
+class TransactionUpdate(Base):
+    """取引更新テーブル"""
+    __tablename__ = "transaction_updates"
+    id = Column(Integer, primary_key=True)
+    transaction_id = Column(Integer, ForeignKey('transactions.id'))
+    account_name = Column(String, ForeignKey('accounts.name'), nullable=False)
+    amount = Column(Float, nullable=False)
+    transaction = relationship("Transaction", back_populates="updates")
+
 class Ledger:
-    def __init__(self, current_date = "ゲーム内時間") :
-        """勘定元帳クラス"""
+    """勘定元帳クラス"""
+    FILE_PATH = "database"
+    
+    def __init__(self, db_path="ledger.db", current_date="ゲーム内時間"):
+        """勘定元帳の初期化"""
         self.current_date = current_date
-        self._accounts = {}
-        self._transactions = []  # 当期トランザクション履歴(期中)
-        self._last_transactions = [] # 当期トランザクション履歴(期末)
-        self._former_transactions = [] # 前期以前の全トランザクション履歴
+        self._transactions = []
+        # データベースの初期化
+        self.engine = create_engine(f"sqlite:///{self.FILE_PATH}/{db_path}")
+        Base.metadata.drop_all(self.engine)
+        Base.metadata.create_all(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
+        self.session = self.Session()
+        
+        # 勘定科目の初期設定
         self._initialize_essential_accounts(file_path="database/essential_account.json")
 
     def _initialize_essential_accounts(self, file_path):
-        """勘定科目の初期設定:essential_account.jsonで管理(12/17)"""
+        """勘定科目の初期設定:essential_account.jsonで管理"""
         with open(file_path, "r", encoding="UTF-8") as file:
             data = json.load(file)
             accounts = data["essential_accounts"]
 
         for account in accounts:
-            name = account["name"]
-            statement = account["statement"]
-            category = account["category"]
-            sub_category = account["sub_category"]
-            
-            self.add_account(Account(name, statement, category, sub_category))
-
-    def add_account(self, account):
+            existing_account = self.session.query(Account).filter_by(name=account["name"]).first()
+            if existing_account:
+                continue  # 既に存在する場合はスキップ
+            new_account = Account(
+                name=account["name"],
+                statement=account["statement"],
+                category=account["category"],
+                sub_category=account.get("sub_category", ""),
+                balance=account.get("balance", 0.0)
+            )
+            self.session.add(new_account)
+        self.session.commit()
+        
+    def add_account(self, name:str, statement:str, category:str, sub_category=None, balance=0):
         """新しい勘定を追加"""
-        self._accounts[account.name] = account
+        new_account = Account(
+            name=name,
+            statement=statement,
+            category=category,
+            sub_category=sub_category,
+            balance=balance
+        )
+        self.session.add(new_account)
+        self.session.commit()
 
     def _update_account(self, name, amount):
         """(内部使用) 指定された勘定を更新"""
-        if name not in self._accounts:
+        account = self.session.query(Account).filter_by(name=name).first()
+        if not account:
             raise ValueError(f"勘定名： {name} が存在しません。")
-        # 勘定の残高を更新
-        self._accounts[name].update(amount)
-        
+        account.update(amount)
+        self.session.commit()
+
     def _clear_account(self, name):
-        self._accounts[name].clear()
-    
+        account = self.session.query(Account).filter_by(name=name).first()
+        if not account:
+            raise ValueError(f"勘定名： {name} が存在しません。")
+        account.clear()
+        self.session.commit()
+
     def _clear_transactions(self):
         self._transactions = []
 
     def reset_ledger(self):
         """全勘定科目の残高を0にリセット"""
-        for account in self._accounts.values():
-            self._update_account(account.name, 0)
+        accounts = self.session.query(Account).all()
+        for account in accounts:
+            account.clear()
+        self.session.commit()
 
     def execute_transaction(self, updates, description=""):
         """取引を実行し、制約を確認"""
@@ -87,12 +135,22 @@ class Ledger:
             self._update_account(name, amount)
 
         # トランザクション履歴を記録
-        transaction = {
-            "updates": updates,
-            "description": description,
-            "timestamp": self.current_date  # ゲーム上の時間を仮定
-        }
-        self._transactions.append(transaction)
+        transaction = Transaction(
+            timestamp=datetime.now(),
+            description=description
+        )
+        self.session.add(transaction)
+        self.session.commit()
+
+        for name, amount in updates:
+            transaction_update = TransactionUpdate(
+                transaction_id=transaction.id,
+                account_name=name,
+                amount=amount
+            )
+            self.session.add(transaction_update)
+
+        self.session.commit()
 
     def execute_settlement(self) -> dict:
         """
@@ -100,8 +158,6 @@ class Ledger:
         剰余金の計算
         帳簿の閉鎖：Ledgerの初期化
         """
-        # self._execute_depreciation(tangible_assets)
-        
         summary, total_revenue, total_expense = self._get_trial_balance()
 
         # 当期純利益を計算
@@ -111,13 +167,10 @@ class Ledger:
         summary["当期純利益"] = -net_income
         
         # 帳簿の閉鎖 -> PLの初期化
-        for account in self._accounts.values():
+        accounts = self.session.query(Account).all()
+        for account in accounts:
             if account.statement == "損益計算書":
-                self._clear_account(account.name)  
-            else:
-                continue
-        # self._clear_transactions()
-            
+                self._clear_account(account.name)
         return summary
     
     def _get_trial_balance(self) -> dict:
@@ -127,12 +180,13 @@ class Ledger:
         total_expense = 0
         
         # 勘定残高を集計し、収益と費用を分けて計算
-        for account in self._accounts.values():
-            summary[account.name] = account.net_balance()
+        accounts = self.session.query(Account).all()
+        for account in accounts:
+            summary[account.name] = account.balance
             if account.category == "収益":
-                total_revenue += account.net_balance()
+                total_revenue += account.balance
             elif account.category == "費用":
-                total_expense += account.net_balance()
+                total_expense += account.balance
                 
         # 残高合計の制約確認
         total_balance = sum(summary.values())
@@ -155,8 +209,6 @@ class Ledger:
             
     def _get_financial_statements(self, summary:dict) -> dict:
         """貸借対照表と損益計算書を作成"""
-        # summary = self.execute_settlement()
-        # 表示用の辞書を初期化
         statements = {
             "貸借対照表": {
                 "資産": {"流動資産": {}, "固定資産": {}, "繰延資産": {}},
@@ -170,7 +222,8 @@ class Ledger:
         }
 
         # 勘定科目をループして各カテゴリー・サブカテゴリーに振り分け
-        for account in self._accounts.values():
+        accounts = self.session.query(Account).all()
+        for account in accounts:
             balance = summary.get(account.name, 0)
             category = account.category
 
@@ -185,8 +238,7 @@ class Ledger:
         return statements
 
     def display_financial_statements(self, summary:dict):
-        """貸借対照表と損益計算書を表示　12/17:print()による表示"""
-        # summary = self.execute_settlement()
+        """貸借対照表と損益計算書を表示"""
         statements = self._get_financial_statements(summary)
          
         # 貸借対照表の表示
@@ -219,16 +271,32 @@ class Ledger:
         # 当期純利益の表示
         print(f"\n当期純利益: {summary['当期純利益']:,}")
 
+    def export_financial_statements_to_excel(self, summary, file_path):
+        """財務諸表をExcelファイルにエクスポート"""
+        # ディレクトリが存在しない場合は作成
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        statements = self._get_financial_statements(summary)
+        
+        with pd.ExcelWriter(file_path) as writer:
+            # 貸借対照表と損益計算書をDataFrameに変換して書き込む
+            balance_sheet = pd.DataFrame(statements["貸借対照表"])
+            income_statement = pd.DataFrame(statements["損益計算書"])
+            balance_sheet.to_excel(writer, sheet_name="貸借対照表")
+            income_statement.to_excel(writer, sheet_name="損益計算書")
+
     def _get_transaction_history(self):
         """トランザクション履歴を取得"""
-        return [
-            {
-                "timestamp": tx["timestamp"],
-                "updates": tx["updates"],
-                "description": tx["description"]
-            }
-            for tx in self._transactions
-        ]
+        transactions = self.session.query(Transaction).all()
+        history = []
+        for tx in transactions:
+            updates = [(update.account_name, update.amount) for update in tx.updates]
+            history.append({
+                "timestamp": tx.timestamp,
+                "updates": updates,
+                "description": tx.description
+            })
+        return history
         
     def display_transaction_history(self):
         """全トランザクション履歴(総勘定元帳)を表示"""
@@ -243,7 +311,7 @@ class Ledger:
 
 def main():
     # サンプルコード
-    ledger = Ledger()
+    ledger = Ledger(db_path="sample_ledger.sqlite3", current_date="2021-01-01")
 
     # 勘定の追加は初期化時に実行済み
 
@@ -295,6 +363,7 @@ def main():
         
     # 財務諸表を表示
     ledger.display_financial_statements(end_1)
+    ledger.export_financial_statements_to_excel(end_1, "output/financial_statements1.xlsx")
     
     try:    
         ledger.execute_transaction([
@@ -335,6 +404,7 @@ def main():
         
     # 財務諸表を表示
     ledger.display_financial_statements(end_2)
+    ledger.export_financial_statements_to_excel(end_2, "output/financial_statements2.xlsx")
 
 if __name__ == "__main__":
     main()
