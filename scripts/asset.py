@@ -16,34 +16,32 @@ class Asset:
         self.market_value = max(0, int(random.gauss(mean, std_dev)))
 
 class Tangible(Asset):
-    METHODS = {"straight_line", "accelarated"}
+    METHODS = {"straight_line", "accelerated"}
     
     def __init__(
         self,
-        name:chr,
-        value:int,
-        owner:chr,
-        useful_life:int,
-        salvage_value_ratio:float, 
-        method:str
+        name: str,
+        value: int,
+        owner: str,
+        useful_life: int,
+        salvage_value_ratio: float, 
+        method: str
         ):
         """有形固定資産クラス
 
         Args:
-            name (chr): 資産名
-            value (int): 取得価額
-            owner (chr): 所有者
+            name (str): 資産名
+            value (int): 帳簿価額
+            owner (str): 所有者
             useful_life (int): 耐用年数
             salvage_value_ratio (float): 残存価額比率
-            method (chr): 減価償却方法(定額法, 定率法(予定))
-
-        Raises:
-            ValueError: 無効な減価償却方法です
+            method (str): 減価償却方法
         """
         super().__init__(name, value)
         self.owner = owner
+        self.useful_life = useful_life
+        self.salvage_value_ratio = salvage_value_ratio
         self.method = method 
-        self.useful_life = useful_life  # 耐用年数 (年単位)
         self.salvage_value = value * salvage_value_ratio # 残存価額
         self.accumulated_depreciation = 0  # 減価償却累計額
         
@@ -283,10 +281,10 @@ class Inventory(Asset):
         # 商品評価損の計算, 簿価の切下げ・更新(あれば)
         appraisal_loss = max(0, (old_price - new_price) * new_quantity)     
         
-        return inventory_shortage, appraisal_loss, self.value, self.initial_value
-    
+        return inventory_shortage, appraisal_loss, self.value, self.initial_value 
     
 class Debt:
+    """借入金クラス"""
     # リスクフリーレートの設定(将来的にランダムに動くように関数化)
     RFR = 0.01
     def __init__(self, name, bank, value):
@@ -297,10 +295,19 @@ class Debt:
         self.rate = self.RFR + self.risk_premium # 利率
         
     def repay_debt(self, repay_value):
+        """借入金の返済"""
+        if repay_value > self.value:
+            raise ValueError("返済額が借入金額を超えています。")
+        
+        self.value -= repay_value
+        print(f"{self.name} に {repay_value} 返済されました。残高: {self.value}")
         self.value =- repay_value
         
-    def add_interest(self, days):
+    def add_interest(self, days: int):
+        """利息の追加"""
         interest = (self.value * self.rate) * days / 365
+        self.value += interest
+        print(f"{self.name} に {days} 日分の利息が追加されました: {interest} 新しい価値: {self.value}")
     
 def main():
     # FIFOのテスト
@@ -345,8 +352,8 @@ def main():
     gam_inventory.add_inventory(50, 55)
     gam_inventory.add_inventory(100, 60)
     print("在庫減少前の在庫数:", gam_inventory.quantity)
-    print("在庫減少前の総価値:", gam_inventory.total_value)
-    print("在庫減少前の平均単価:", gam_inventory.total_value / gam_inventory.total_quantity)
+    print("在庫減少前の総価値:", gam_inventory.price * gam_inventory.quantity)
+    print("在庫減少前の平均単価:", (gam_inventory.price * gam_inventory.quantity) / gam_inventory.quantity)
 
     try:
         gam_inventory.subtract_inventory(120)
@@ -356,8 +363,8 @@ def main():
     gam_inventory.add_inventory(75, 65)
 
     print("在庫減少後の在庫数:", gam_inventory.quantity)
-    print("在庫減少後の総価値:", gam_inventory.total_value)
-    print("在庫減少前の平均単価:", gam_inventory.total_value / gam_inventory.total_quantity)
+    print("在庫減少後の総価値:", gam_inventory.price * gam_inventory.quantity)
+    print("在庫減少後の平均単価:", (gam_inventory.price * gam_inventory.quantity) / gam_inventory.quantity)
 
 if __name__ == "__main__":
     main()

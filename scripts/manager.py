@@ -1,6 +1,6 @@
 """プレイヤーの各種管理クラスの記述"""
 from scripts import (
-    asset, 
+    asset,
     player
     )
 
@@ -15,7 +15,7 @@ class SalesManager(Manager):
     """販売マネージャークラス"""
     def __init__(self, game_master, owner_player):
         super().__init__(game_master, owner_player)
-    
+        
     def sale_product(self, product_id:chr, 
                      quantity:int, sales_price:int = None, revert:int = 0):
         """商品の販売"""

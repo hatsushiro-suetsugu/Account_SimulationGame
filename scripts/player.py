@@ -109,7 +109,7 @@ class GameMaster:
         for player in self.players:
             player.process_time(days)
 
-        # 各資産の時間経過処理
+        # 各資産の時間経過処理(?)
         for asset_id, asset_instance in self.asset_registry.items():
             if hasattr(asset_instance, "update_with_time"):
                 asset_instance.update_with_time(days)
@@ -164,8 +164,8 @@ class Player:
         :param days: 時間経過の日数
         """
         for asset_info in self.portfolio:
-            asset_obj : asset.Asset = asset_info.get("instance")
-            asset_id : chr = asset_info.get("ID")
+            asset_obj: asset.Asset = asset_info.get("instance")
+            asset_id: chr = asset_info.get("ID")
 
             # Tangible 資産の場合は減価償却を実行
             if isinstance(asset_obj, asset.Tangible):
@@ -175,13 +175,16 @@ class Player:
                     ("減価償却累計額", -depreciation)
                 ], description=f"{asset_obj.name} の減価償却 ({days}日)")
 
-            # 他の資産タイプに対応したロジックを追加する場合はここに記述
+            # Inventory: 実地棚卸の手続きを実行
             if isinstance(asset_obj, asset.Inventory):
                 self.perform_inventory_audit(product_id=asset_id)
                 
+            # 他の資産タイプに対応したロジックを追加する場合はここに記述
+            
         # ledger の〆切
         end = self.ledger_manager.execute_settlement()
-        self.ends.append(end)
+        self.ends.append({"date": self.game_master.current_date,
+                          "end" : end})
 
         print(f"[{self.name}]時間経過が処理されました ({days}日)。")
 
