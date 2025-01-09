@@ -1,5 +1,5 @@
 """プレイヤーの各種管理クラスの記述"""
-from scripts import (
+from src import (
     asset,
     player
     )

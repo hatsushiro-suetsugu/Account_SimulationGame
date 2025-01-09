@@ -4,27 +4,48 @@
 from datetime import datetime, timedelta
 import uuid
 
-from scripts import (
-    asset,
-    ledger,
-    manager
-    )
+from sqlalchemy import (
+    create_engine, 
+    Column, 
+    Integer, 
+    String,
+    Float,
+    DateTime,
+    ForeignKey
+)
+from sqlalchemy.orm import (
+    declarative_base, 
+    sessionmaker,
+    relationship
+)
 
-
+from src import asset, ledger, manager
 
 class GameMaster:
+    """ゲームマスタークラス
+    """
     ASSET_TYPES = {
         "tangible": {"class": asset.Tangible, "description": "固定資産"},
         "building": {"class": asset.Building, "description": "建物"},
         "inventory": {"class": asset.Inventory, "description": "棚卸資産"}
     }
         
-    def __init__(self, start_date="2024-01-01"):
+    def __init__(self, start_date="2024-01-01", db_path="database/master.sqlite3"):
         """ゲームマスターの初期化"""
         self.current_date = datetime.strptime(start_date, "%Y-%m-%d")
         self.players = []
         self.event_log = []
-        self.asset_registry = {}  # 全資産の管理
+        self.asset_registry = {} # 全資産の管理
+        
+        # データベースの初期化
+        self.engine = create_engine(f"sqlite:///{db_path}")
+        self.Base = declarative_base()
+        self.Base.metadata.drop_all(self.engine)
+        self.Base.metadata.create_all(self.engine)
+        
+        # セッションの作成
+        self.Session = sessionmaker(bind=self.engine)
+        self.session = self.Session()
         
     def construct_instance(self, asset_type, name, *args, **kwargs) -> dict:
         """
@@ -140,7 +161,7 @@ class Player:
     def __init__(self, name: chr, game_master: GameMaster, initial_cash=5000):
         self.name = name
         self.game_master = game_master
-        self.ledger_manager = ledger.Ledger(current_date=game_master.current_date)
+        self.ledger_manager = ledger.Ledger(db_path=f"{self.name}_ledger.sqlite3", current_date=game_master.current_date)
         # 各マネージャーオブジェクトの設定
         self.building_manager = manager.BuildingManager(game_master, self)
         self.purchase_manager = manager.PurchaseManager(game_master,self)

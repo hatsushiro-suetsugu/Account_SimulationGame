@@ -13,6 +13,7 @@ Base = declarative_base()
 class Account(Base):
     """勘定科目テーブル"""
     __tablename__ = "accounts"
+    # 勘定科目の属性
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False, unique=True)
     statement = Column(String(255), nullable=False)
@@ -57,6 +58,7 @@ class Ledger:
         self.engine = create_engine(f"sqlite:///{self.FILE_PATH}/{db_path}")
         Base.metadata.drop_all(self.engine)
         Base.metadata.create_all(self.engine)
+        # セッションの作成
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
         
@@ -309,7 +311,7 @@ class Ledger:
             print(f"    摘要: {description}")
 
 def main():
-    # サンプルコード
+    """会計帳簿システムの実行"""
     ledger = Ledger(db_path="sample_ledger.sqlite3", current_date="2021-01-01")
 
     # 勘定の追加は初期化時に実行済み
@@ -353,6 +355,7 @@ def main():
     # 第1期の終了
     print("----第1期が終了しました！----")
     end_1 = ledger.execute_settlement() 
+    print(end_1)
     
     # 仕訳の表示
     ledger.display_transaction_history()
