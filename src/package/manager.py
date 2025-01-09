@@ -1,8 +1,5 @@
 """プレイヤーの各種管理クラスの記述"""
-from src import (
-    asset,
-    player
-    )
+from . import player, asset
 
 class Manager:
     """一般マネージャークラス"""
