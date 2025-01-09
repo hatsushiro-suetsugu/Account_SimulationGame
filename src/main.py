@@ -3,4 +3,4 @@
 ・需要の発生
 ・
 """
-from player import GameMaster, Player
+from package import GameMaster, Player
