@@ -5,8 +5,20 @@ from datetime import datetime
 import json
 import pandas as pd
 
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy import (
+    create_engine,
+    Column, 
+    Integer, 
+    String,
+    Float, 
+    DateTime, 
+    ForeignKey
+    )
+from sqlalchemy.orm import (
+    declarative_base,
+    sessionmaker,
+    relationship
+    )
 
 Base = declarative_base()
 
